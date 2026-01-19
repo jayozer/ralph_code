@@ -334,3 +334,5 @@ archive/
 ---
 
 *"That's the beauty of Ralph — the technique is deterministically bad in an undeterministic world."* — Geoffrey Huntley
+
+*"Every failure leaves a breadcrumb. Every small commit adds a brick. Eventually, the breadcrumbs become a highway and the bricks become a cathedral. Ralph just keeps laying bricks."* — Jay Ozer
