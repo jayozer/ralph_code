@@ -40,7 +40,7 @@ const allSteps: { id: string; label: string; description: string; phase: Phase }
   { id: '2', label: 'Convert to prd.json', description: 'Break into small user stories', phase: 'setup' },
   { id: '3', label: 'Run ralph.sh', description: 'Starts the autonomous loop', phase: 'setup' },
   // Loop phase
-  { id: '4', label: 'Amp picks a story', description: 'Finds next passes: false', phase: 'loop' },
+  { id: '4', label: 'Claude picks a story', description: 'Finds next passes: false', phase: 'loop' },
   { id: '5', label: 'Implements it', description: 'Writes code, runs tests', phase: 'loop' },
   { id: '6', label: 'Commits changes', description: 'If tests pass', phase: 'loop' },
   { id: '7', label: 'Updates prd.json', description: 'Sets passes: true', phase: 'loop' },
@@ -72,7 +72,7 @@ const notes = [
     appearsWithStep: 8,
     position: { x: 480, y: 620 },
     color: { bg: '#fdf4f0', border: '#c97a50' },
-    content: `Also updates AGENTS.md with
+    content: `Also updates CLAUDE.md with
 patterns discovered, so future
 iterations learn from this one.`,
   },
@@ -325,7 +325,7 @@ function App() {
   return (
     <div className="app-container">
       <div className="header">
-        <h1>How Ralph Works with Amp</h1>
+        <h1>How Ralph Works with Claude Code</h1>
         <p>Autonomous AI agent loop for completing PRDs</p>
       </div>
       <div className="flow-container">

@@ -1,6 +1,7 @@
 #!/bin/bash
-# Ralph Wiggum - Long-running AI agent loop
+# Ralph Wiggum - Long-running AI agent loop (Claude Code version)
 # Usage: ./ralph.sh [max_iterations]
+# Requires: Claude Code CLI (https://docs.anthropic.com/en/docs/claude-code)
 
 set -e
 
@@ -59,8 +60,10 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   echo "  Ralph Iteration $i of $MAX_ITERATIONS"
   echo "═══════════════════════════════════════════════════════"
   
-  # Run amp with the ralph prompt
-  OUTPUT=$(cat "$SCRIPT_DIR/prompt.md" | amp --dangerously-allow-all 2>&1 | tee /dev/stderr) || true
+  # Run Claude Code with the ralph prompt
+  # Using -p (print mode) for non-interactive execution
+  # Using --dangerously-skip-permissions to allow autonomous operation
+  OUTPUT=$(claude -p "$(cat "$SCRIPT_DIR/prompt.md")" --dangerously-skip-permissions 2>&1 | tee /dev/stderr) || true
   
   # Check for completion signal
   if echo "$OUTPUT" | grep -q "<promise>COMPLETE</promise>"; then
