@@ -8,20 +8,36 @@
 
 This is **not** the built-in Claude Code ralph skill. This is a customizable, transparent implementation that gives you full control over the autonomous loop — the way Geoffrey Huntley intended.
 
+---
+
+## Table of Contents
+
+- [Why This Over the Built-in Skill?](#why-this-over-the-built-in-skill)
+- [How It Works](#how-it-works)
+- [Quick Start](#quick-start)
+- [Using Ralph in an Existing Project](#using-ralph-in-an-existing-project)
+- [The PRD Skills](#the-prd-skills)
+- [Writing Good User Stories](#writing-good-user-stories)
+- [Customization](#customization)
+- [Debugging](#debugging)
+- [Credits](#credits)
+
+---
+
 ## Why This Over the Built-in Skill?
 
 Geoffrey Huntley [explicitly stated](https://www.youtube.com/watch?v=O2bBWDoxO4s) that **"Claude Code's implementation isn't it."** Here's why this repo exists:
 
 ```mermaid
 flowchart TB
-    subgraph builtin[Built-in Ralph Skill]
+    subgraph builtin["Built-in Ralph Skill"]
         B1[Single Claude Code Session] --> B2[Stop Hook Blocks Exit]
         B2 --> B3[Same Context Grows]
         B3 --> B4[Context Eventually Fills]
         B4 --> B5[Quality Degrades]
     end
 
-    subgraph thisrepo[This Repo: PRD-Driven Ralph]
+    subgraph thisrepo["This Repo: PRD-Driven Ralph"]
         R1[Bash Loop Spawns Instance] --> R2[Fresh Context Every Time]
         R2 --> R3[Implement ONE Story]
         R3 --> R4[Commit + Update prd.json]
@@ -45,27 +61,49 @@ flowchart TB
 | **Progress visibility** | Opaque | `progress.txt` + `prd.json` status |
 | **Learning persistence** | Lost when session ends | Saved to `CLAUDE.md` files |
 
+---
+
 ## How It Works
 
 ```mermaid
-sequenceDiagram
-    participant RalphLoop as ralph.sh
-    participant CC as Claude Code
-    participant Git as Git History
-    participant PRD as prd.json
-    participant Progress as progress.txt
+flowchart TB
+    subgraph setup["Setup Phase"]
+        S1["You write a PRD<br/><small>Define what you want to build</small>"]
+        S2["Convert to prd.json<br/><small>Break into small user stories</small>"]
+        S3["Run ralph.sh<br/><small>Starts the autonomous loop</small>"]
+    end
 
-    RalphLoop->>CC: Spawn fresh instance with prompt.md
-    CC->>PRD: Read user stories
-    CC->>Progress: Read previous learnings
-    CC->>CC: Pick highest priority story (passes: false)
-    CC->>CC: Implement story
-    CC->>CC: Run quality checks
-    CC->>Git: Commit changes
-    CC->>PRD: Set passes: true
-    CC->>Progress: Append learnings
-    CC-->>RalphLoop: Exit (or output COMPLETE if done)
-    RalphLoop->>RalphLoop: Sleep 2s, repeat
+    subgraph loop["Loop Phase (Fresh Context Each Time)"]
+        L1["Claude picks a story<br/><small>Finds next passes: false</small>"]
+        L2["Implements it<br/><small>Writes code, runs tests</small>"]
+        L3["Commits changes<br/><small>If tests pass</small>"]
+        L4["Updates prd.json<br/><small>Sets passes: true</small>"]
+        L5["Logs to progress.txt<br/><small>Saves learnings</small>"]
+    end
+
+    subgraph decision["Decision"]
+        D1{"More stories?"}
+    end
+
+    subgraph done["Complete"]
+        E1["Done!<br/><small>All stories complete</small>"]
+    end
+
+    S1 --> S2
+    S2 --> S3
+    S3 --> L1
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+    L4 --> L5
+    L5 --> D1
+    D1 -->|Yes| L1
+    D1 -->|No| E1
+
+    style setup fill:#f0f7ff,stroke:#4a90d9
+    style loop fill:#f5f5f5,stroke:#666666
+    style decision fill:#fff8e6,stroke:#c9a227
+    style done fill:#f0fff4,stroke:#38a169
 ```
 
 ### The Memory Model
@@ -74,7 +112,7 @@ Unlike the built-in skill which relies on accumulated context, this implementati
 
 ```mermaid
 graph LR
-    subgraph "Persists Between Iterations"
+    subgraph persist["Persists Between Iterations"]
         A[Git History] --> |"What was done"| D[Fresh Claude Instance]
         B[prd.json] --> |"What's left to do"| D
         C[progress.txt] --> |"Learnings & patterns"| D
@@ -87,20 +125,80 @@ graph LR
     D --> |"May update"| E
 ```
 
-## Prerequisites
+### Session State Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           RALPH LIFECYCLE                                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+  ┌──────────────┐
+  │  You write   │
+  │  prd.json    │
+  └──────┬───────┘
+         │
+         ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  ralph.sh starts                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ ITERATION 1                                                          │   │
+│  │  ┌────────────────┐                                                  │   │
+│  │  │ Fresh Claude   │──▶ Read prd.json ──▶ Find US-001 (passes:false) │   │
+│  │  │ Code Instance  │                                                  │   │
+│  │  └────────┬───────┘                                                  │   │
+│  │           │                                                          │   │
+│  │           ▼                                                          │   │
+│  │  ┌────────────────┐   ┌────────────────┐   ┌────────────────┐       │   │
+│  │  │ Implement      │──▶│ Run quality    │──▶│ git commit     │       │   │
+│  │  │ story US-001   │   │ checks         │   │                │       │   │
+│  │  └────────────────┘   └────────────────┘   └────────┬───────┘       │   │
+│  │                                                      │               │   │
+│  │           ┌──────────────────────────────────────────┘               │   │
+│  │           ▼                                                          │   │
+│  │  ┌────────────────┐   ┌────────────────┐                             │   │
+│  │  │ Update prd.json│──▶│ Append to      │──▶ EXIT                    │   │
+│  │  │ passes: true   │   │ progress.txt   │                             │   │
+│  │  └────────────────┘   └────────────────┘                             │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                     sleep 2s       │                                        │
+│                                    ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ ITERATION 2 (Fresh context!)                                         │   │
+│  │  ┌────────────────┐                                                  │   │
+│  │  │ Fresh Claude   │──▶ Read prd.json ──▶ Find US-002 (passes:false) │   │
+│  │  │ Code Instance  │   Read progress.txt (learn from iteration 1)    │   │
+│  │  └────────────────┘                                                  │   │
+│  │           ... repeats same cycle ...                                 │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                    │                                        │
+│                                    ▼                                        │
+│                    (continues until all passes:true)                        │
+│                                    │                                        │
+│                                    ▼                                        │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ FINAL ITERATION                                                      │   │
+│  │  All stories have passes:true ──▶ Output: <promise>COMPLETE</promise>│   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Quick Start
+
+### Prerequisites
 
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
 - `jq` installed (`brew install jq` on macOS)
 - A git repository for your project
 
-## Quick Start
-
 ### 1. Copy to your project
 
 ```bash
 mkdir -p scripts/ralph
-curl -sL https://raw.githubusercontent.com/snarktank/ralph/main/ralph.sh > scripts/ralph/ralph.sh
-curl -sL https://raw.githubusercontent.com/snarktank/ralph/main/prompt.md > scripts/ralph/prompt.md
+curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/ralph.sh > scripts/ralph/ralph.sh
+curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/prompt.md > scripts/ralph/prompt.md
 chmod +x scripts/ralph/ralph.sh
 ```
 
@@ -137,75 +235,62 @@ chmod +x scripts/ralph/ralph.sh
 
 Ralph will autonomously implement each story, commit changes, and mark stories as complete.
 
-## What You Control (That the Built-in Doesn't)
+---
 
-### 1. The Prompt (`prompt.md`)
+## Using Ralph in an Existing Project
 
-Every instruction Ralph follows is in `prompt.md`. Want to add project-specific rules? Edit the file:
+You **don't** need to start from this repo. Ralph is designed to be copied into any existing project.
 
-```markdown
-## Quality Requirements
+### Option 1: Download directly
 
-- ALL commits must pass `npm run typecheck`
-- Run `npm test` before committing
-- Never modify files in `src/legacy/`
+```bash
+# From your project root
+mkdir -p scripts/ralph
+curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/ralph.sh > scripts/ralph/ralph.sh
+curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/prompt.md > scripts/ralph/prompt.md
+chmod +x scripts/ralph/ralph.sh
 ```
 
-### 2. Story Granularity (`prd.json`)
+### Option 2: Copy from a local clone
 
-You define exactly what "done" looks like for each story:
-
-```json
-{
-  "acceptanceCriteria": [
-    "Add loading spinner during API calls",
-    "Show error toast on failure",
-    "Typecheck passes",
-    "Verify in browser"
-  ]
-}
+```bash
+# If you have this repo cloned locally
+mkdir -p scripts/ralph
+cp /path/to/ralph/ralph.sh scripts/ralph/
+cp /path/to/ralph/prompt.md scripts/ralph/
+chmod +x scripts/ralph/ralph.sh
 ```
 
-### 3. Learning Persistence
+### Project structure after setup
 
-Each iteration appends discoveries to `progress.txt`:
-
-```markdown
-## Codebase Patterns
-- Use `sql<number>` template for aggregations
-- Always use `IF NOT EXISTS` for migrations
-- Export types from actions.ts for UI components
-
-## 2026-01-18 14:30 - US-003
-- Implemented: Priority filter dropdown
-- Learnings: The filter state is managed in URL params, not React state
+```
+your-project/
+├── scripts/
+│   └── ralph/
+│       ├── ralph.sh       ← copied
+│       ├── prompt.md      ← copied
+│       ├── prd.json       ← YOU CREATE THIS
+│       └── progress.txt   ← auto-created on first run
+├── src/
+├── package.json
+└── ...
 ```
 
-These patterns persist across iterations and across features.
+---
 
-### 4. Browser Verification
+## The PRD Skills
 
-For UI stories, Ralph uses available browser tools (Playwright MCP, webapp-testing skill) to **actually verify** changes work:
+Two optional skills help you create and convert PRDs:
 
-```json
-{
-  "acceptanceCriteria": [
-    "Filter dropdown has options: All | High | Medium | Low",
-    "Typecheck passes",
-    "Verify in browser"
-  ]
-}
-```
-
-## The PRD-Driven Approach
+### Workflow Overview
 
 ```mermaid
 flowchart LR
-    A[Feature Idea] --> B[/prd skill/]
-    B --> C[prd-feature.md]
-    C --> D[/ralph skill/]
-    D --> E[prd.json]
-    E --> F[ralph.sh]
+    A[Feature Idea] --> B["/prd skill"]
+    B --> C["tasks/prd-feature.md"]
+    C --> D["/ralph skill"]
+    D --> E["prd.json"]
+    E --> F["ralph.sh"]
     F --> G{All stories pass?}
     G -->|No| F
     G -->|Yes| H[Feature Complete]
@@ -219,71 +304,147 @@ cp -r .claude/skills/prd ~/.claude/skills/
 cp -r .claude/skills/ralph ~/.claude/skills/
 ```
 
-### Generate a PRD
+### Skill 1: `/prd` — Generate a PRD
 
+Generates a structured Product Requirements Document through interactive Q&A.
+
+**Usage:**
 ```
 /prd Add a task priority system with high/medium/low levels
 ```
 
-The skill asks clarifying questions, then generates a structured PRD.
+**What it does:**
+1. Asks 3-5 clarifying questions with lettered options
+2. Generates a structured PRD based on your answers
+3. Saves to `tasks/prd-[feature-name].md`
 
-### Convert to Ralph Format
-
+**Example interaction:**
 ```
-/ralph convert tasks/prd-task-priority.md to prd.json
-```
+1. What is the primary goal of this feature?
+   A. Help users focus on important tasks
+   B. Enable team prioritization workflows
+   C. Improve task sorting/filtering
+   D. Other: [please specify]
 
-The skill creates properly-sized user stories with verifiable acceptance criteria.
-
-## Why Small Stories Matter
-
-Each iteration runs in a fresh context. If a story is too big, Claude runs out of context before finishing:
-
-```mermaid
-graph TD
-    subgraph "Too Big"
-        TB1["Build entire dashboard"] --> TB2["Runs out of context"]
-        TB2 --> TB3["Incomplete code"]
-        TB3 --> TB4["Broken commits"]
-    end
-
-    subgraph "Right Size"
-        RS1["Add priority column"] --> RS2["Complete in one iteration"]
-        RS2 --> RS3["Clean commit"]
-        RS3 --> RS4["Next story picks up"]
-    end
-
-    style TB4 fill:#ffcccc,stroke:#cc0000
-    style RS4 fill:#ccffcc,stroke:#00cc00
+2. Who is the target user?
+   A. Individual users only
+   B. Team members
+   C. All users
+   D. Admin users only
 ```
 
-**Right-sized stories:**
-- Add a database column and migration
-- Add a UI component to an existing page
-- Update a server action with new logic
-- Add a filter dropdown to a list
+You can answer quickly: `1A, 2C`
 
-**Too big (split these):**
-- "Build the entire dashboard"
-- "Add authentication"
-- "Refactor the API"
+**PRD sections generated:**
+- Introduction/Overview
+- Goals
+- User Stories (with acceptance criteria)
+- Functional Requirements (numbered)
+- Non-Goals (out of scope)
+- Technical Considerations
+- Success Metrics
+- Open Questions
 
-## Key Files
+### Skill 2: `/ralph` — Convert PRD to JSON
 
-| File | Purpose |
-|------|---------|
-| `ralph.sh` | The bash loop — spawns fresh Claude Code instances |
-| `prompt.md` | Instructions for each iteration — **fully customizable** |
-| `prd.json` | User stories with acceptance criteria and `passes` status |
-| `progress.txt` | Learnings that persist across iterations |
-| `.claude/skills/prd/` | Skill for generating PRDs |
-| `.claude/skills/ralph/` | Skill for converting PRDs to JSON |
+Converts PRD markdown to the `prd.json` format Ralph executes.
 
-## Comparison: Y Combinator Hackathon Results
+**Usage:**
+```
+/ralph convert tasks/prd-task-priority.md
+```
 
-At a YC hackathon, teams using the Ralph pattern [shipped 6 repos overnight](https://github.com/repomirrorhq/repomirror/blob/main/repomirror.md). One engineer reported completing a $50k contract for [$297 in API costs](https://x.com/GeoffreyHuntley/status/1943528204393955634).
+**What it does:**
+1. Reads the PRD markdown
+2. Splits into small, implementable stories
+3. Orders by dependency (schema → backend → UI)
+4. Adds verification criteria
+5. Saves to `prd.json`
 
-The key? **Structured iteration with verifiable acceptance criteria** — exactly what this repo provides.
+**Key rules it follows:**
+- Each story must fit in ONE context window
+- Dependencies ordered correctly (database before API before UI)
+- Every story includes "Typecheck passes"
+- UI stories include "Verify in browser"
+
+---
+
+## Writing Good User Stories
+
+### Story Size: The #1 Rule
+
+**Each story must be completable in ONE Ralph iteration (one context window).**
+
+```
+✅ Right-sized:                    ❌ Too big (split these):
+─────────────────────────────────────────────────────────────
+• Add a database column            • "Build entire dashboard"
+• Add a UI component               • "Add authentication"
+• Add a filter dropdown            • "Refactor the API"
+• Update a server action
+```
+
+**Rule of thumb:** If you can't describe the change in 2-3 sentences, it's too big.
+
+### Story Ordering: Dependencies First
+
+Stories execute in priority order. Earlier stories must not depend on later ones.
+
+| Priority | Type | Example |
+|----------|------|---------|
+| 1 | Schema/migrations | Add `priority` column to tasks table |
+| 2 | Backend logic | Create server action for priority updates |
+| 3 | UI components | Add priority badge to task cards |
+| 4 | Aggregations | Add priority filter dropdown |
+
+### Acceptance Criteria: Must Be Verifiable
+
+Each criterion must be something Ralph can CHECK, not something vague.
+
+```
+✅ Good (verifiable):              ❌ Bad (vague):
+─────────────────────────────────────────────────────────────
+• Add status column with           • "Works correctly"
+  default 'pending'
+• Filter has options: All,         • "User can do X easily"
+  Active, Completed
+• Clicking delete shows            • "Good UX"
+  confirmation dialog
+• Typecheck passes                 • "Handles edge cases"
+```
+
+**Always include these final criteria:**
+- `"Typecheck passes"` — on every story
+- `"Verify in browser"` — on UI stories
+
+---
+
+## Customization
+
+### Edit `prompt.md` for Project-Specific Rules
+
+Every instruction Ralph follows is in `prompt.md`. Add your project's requirements:
+
+```markdown
+## Quality Requirements
+
+- ALL commits must pass `npm run typecheck`
+- Run `npm test` before committing
+- Use Tailwind for all styling
+- Never modify files in `src/legacy/`
+- Always use server actions, not API routes
+```
+
+### What You Control (That the Built-in Doesn't)
+
+| What | How |
+|------|-----|
+| **Quality gates** | Edit `prompt.md` to require specific checks |
+| **Story granularity** | Define exact acceptance criteria in `prd.json` |
+| **Learning persistence** | `progress.txt` captures patterns across iterations |
+| **Browser verification** | Add "Verify in browser" to UI story criteria |
+
+---
 
 ## Debugging
 
@@ -296,9 +457,12 @@ cat progress.txt
 
 # Check git history
 git log --oneline -10
+
+# See current branch
+git branch --show-current
 ```
 
-## Archiving
+### Archiving Previous Runs
 
 Ralph automatically archives previous runs when you start a new feature:
 
@@ -312,17 +476,60 @@ archive/
     progress.txt
 ```
 
-## Interactive Flowchart
+---
 
-[![Ralph Flowchart](ralph-flowchart.png)](https://snarktank.github.io/ralph/)
+## Key Files
 
-**[View Interactive Flowchart](https://snarktank.github.io/ralph/)** — Click through to see each step with animations.
+| File | Purpose |
+|------|---------|
+| `ralph.sh` | The bash loop — spawns fresh Claude Code instances |
+| `prompt.md` | Instructions for each iteration — **fully customizable** |
+| `prd.json` | User stories with acceptance criteria and `passes` status |
+| `progress.txt` | Learnings that persist across iterations |
+| `.claude/skills/prd/` | Skill for generating PRDs |
+| `.claude/skills/ralph/` | Skill for converting PRDs to JSON |
+
+---
+
+## Why Small Stories Matter
+
+Each iteration runs in a fresh context. If a story is too big, Claude runs out of context before finishing:
+
+```mermaid
+graph TD
+    subgraph toobig["Too Big"]
+        TB1["Build entire dashboard"] --> TB2["Runs out of context"]
+        TB2 --> TB3["Incomplete code"]
+        TB3 --> TB4["Broken commits"]
+    end
+
+    subgraph rightsize["Right Size"]
+        RS1["Add priority column"] --> RS2["Complete in one iteration"]
+        RS2 --> RS3["Clean commit"]
+        RS3 --> RS4["Next story picks up"]
+    end
+
+    style TB4 fill:#ffcccc,stroke:#cc0000
+    style RS4 fill:#ccffcc,stroke:#00cc00
+```
+
+---
+
+## Comparison: Y Combinator Hackathon Results
+
+At a YC hackathon, teams using the Ralph pattern [shipped 6 repos overnight](https://github.com/repomirrorhq/repomirror/blob/main/repomirror.md). One engineer reported completing a $50k contract for [$297 in API costs](https://x.com/GeoffreyHuntley/status/1943528204393955634).
+
+The key? **Structured iteration with verifiable acceptance criteria** — exactly what this repo provides.
+
+---
 
 ## Credits
 
 - **[Geoffrey Huntley](https://ghuntley.com/ralph/)** — Created the Ralph pattern
 - **[Ryan Carson](https://x.com/ryancarson)** — Original Amp implementation this repo is based on
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** — The AI that does the work
+
+---
 
 ## TL;DR
 
