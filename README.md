@@ -241,23 +241,35 @@ Ralph will autonomously implement each story, commit changes, and mark stories a
 
 You **don't** need to start from this repo. Ralph is designed to be copied into any existing project.
 
-### Option 1: Download directly
+### Option 1: Use the Portable Folder (Recommended)
+
+This repo includes a `portable/` folder with everything you need:
+
+```bash
+# If you have this repo cloned locally
+/path/to/ralph/portable/setup.sh
+
+# Or copy the whole folder
+cp -r /path/to/ralph/portable your-project/ralph
+chmod +x your-project/ralph/ralph.sh
+```
+
+The portable folder includes:
+- `ralph.sh` — The bash loop
+- `prompt.md` — Instructions for Claude
+- `prd.json.example` — Example PRD to copy
+- `setup.sh` — One-command setup script
+- `install-skills.sh` — Install `/prd` and `/ralph` skills globally
+- `skills/` — The skill files for PRD generation
+
+### Option 2: Download directly
 
 ```bash
 # From your project root
 mkdir -p scripts/ralph
 curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/ralph.sh > scripts/ralph/ralph.sh
 curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/prompt.md > scripts/ralph/prompt.md
-chmod +x scripts/ralph/ralph.sh
-```
-
-### Option 2: Copy from a local clone
-
-```bash
-# If you have this repo cloned locally
-mkdir -p scripts/ralph
-cp /path/to/ralph/ralph.sh scripts/ralph/
-cp /path/to/ralph/prompt.md scripts/ralph/
+curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/prd.json.example > scripts/ralph/prd.json.example
 chmod +x scripts/ralph/ralph.sh
 ```
 
@@ -265,12 +277,11 @@ chmod +x scripts/ralph/ralph.sh
 
 ```
 your-project/
-├── scripts/
-│   └── ralph/
-│       ├── ralph.sh       ← copied
-│       ├── prompt.md      ← copied
-│       ├── prd.json       ← YOU CREATE THIS
-│       └── progress.txt   ← auto-created on first run
+├── ralph/
+│   ├── ralph.sh       ← the bash loop
+│   ├── prompt.md      ← instructions (customize this)
+│   ├── prd.json       ← YOUR USER STORIES
+│   └── progress.txt   ← auto-created on first run
 ├── src/
 ├── package.json
 └── ...
@@ -486,6 +497,7 @@ archive/
 | `prompt.md` | Instructions for each iteration — **fully customizable** |
 | `prd.json` | User stories with acceptance criteria and `passes` status |
 | `progress.txt` | Learnings that persist across iterations |
+| `portable/` | **Self-contained folder to copy to any project** |
 | `.claude/skills/prd/` | Skill for generating PRDs |
 | `.claude/skills/ralph/` | Skill for converting PRDs to JSON |
 
