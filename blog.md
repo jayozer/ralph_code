@@ -118,7 +118,7 @@ Here's the complete workflow from feature idea to shipped code:
 git clone https://github.com/jayozer/ralph.git
 
 # Copy to your project
-cp ralph/ralph.sh ralph/ralph-claude.sh ralph/prompt-claude.md ralph/prd.json.example /path/to/your-project/
+cp ralph/ralph.sh ralph/ralph-claude.sh ralph/ralph-stats.sh ralph/prompt-claude.md ralph/prd.json.example /path/to/your-project/
 chmod +x /path/to/your-project/ralph*.sh
 ```
 
@@ -128,6 +128,7 @@ Or download directly:
 cd /path/to/your-project
 curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph.sh
 curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph-claude.sh
+curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph-stats.sh
 curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prompt-claude.md
 curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prd.json.example
 chmod +x ralph*.sh
@@ -172,7 +173,81 @@ cat progress.txt
 
 # Review commits
 git log --oneline -10
+
+# Monitor stats in real-time (run in another terminal)
+./ralph-stats.sh watch
 ```
+
+## Stats Tracking: Know Your Costs
+
+One of the most common questions: "How much did that run cost?"
+
+Ralph now tracks comprehensive stats for every iteration:
+
+- **Time spent** — wall clock and API time
+- **Tokens used** — input, output, and cache tokens
+- **Model used** — which model handled each iteration
+- **Cost** — total USD spent (Claude Code)
+
+### Per-Iteration Stats
+
+Stats are written to `ralph-stats.jsonl` after each iteration:
+
+```jsonl
+{"run_id":"2025-01-28T10:30:00Z","engine":"claude","iteration":1,"duration_ms":45000,"model":"claude-opus-4-5-20251101","input_tokens":5000,"output_tokens":2000,"cache_read_tokens":23000,"cost_usd":0.15}
+{"run_id":"2025-01-28T10:30:00Z","engine":"claude","iteration":2,"duration_ms":38000,"model":"claude-opus-4-5-20251101","input_tokens":4500,"output_tokens":1800,"cache_read_tokens":25000,"cost_usd":0.12}
+```
+
+### Real-Time Monitoring
+
+While Ralph runs, open another terminal:
+
+```bash
+./ralph-stats.sh watch
+```
+
+Output refreshes every 5 seconds:
+
+```
+═══════════════════════════════════════════════════════════
+ Ralph Stats Monitor
+═══════════════════════════════════════════════════════════
+ Run ID:        2025-01-28T10:30:00Z
+ Engine:        claude
+ Model:         claude-opus-4-5-20251101
+───────────────────────────────────────────────────────────
+ Iterations:    3
+ Elapsed:       5m 23s (wall clock)
+ API Time:      2m 15s (135000 ms)
+───────────────────────────────────────────────────────────
+ Input Tokens:  15000
+ Output Tokens: 8500
+ Cache Read:    45000
+ Total Tokens:  68500
+───────────────────────────────────────────────────────────
+ Total Cost:    $0.45
+═══════════════════════════════════════════════════════════
+ Last updated:  10:35:23
+```
+
+### End-of-Run Summary
+
+When Ralph finishes, you get a formatted summary:
+
+```
+═══════════════════════════════════════════════════════════
+ Ralph Complete!
+═══════════════════════════════════════════════════════════
+ Engine:        claude
+ Iterations:    5
+ Duration:      3m 45s (225000 ms)
+ Total Tokens:  85000 (input: 50000 / output: 35000 / cache: 0)
+ Total Cost:    $0.75
+ Model:         claude-opus-4-5-20251101
+═══════════════════════════════════════════════════════════
+```
+
+Now you can answer "that feature cost $2.47 and took 12 iterations" with confidence.
 
 ## Bonus: PRD Generation Skills (Claude Code Only)
 
@@ -221,7 +296,7 @@ Quick start:
 ```bash
 # Get the files
 git clone https://github.com/jayozer/ralph.git
-cp ralph/ralph.sh ralph/ralph-claude.sh ralph/prompt-claude.md ralph/prd.json.example ./
+cp ralph/ralph.sh ralph/ralph-claude.sh ralph/ralph-stats.sh ralph/prompt-claude.md ralph/prd.json.example ./
 
 # Create your PRD
 cp prd.json.example prd.json
@@ -230,9 +305,12 @@ cp prd.json.example prd.json
 # Run Ralph
 chmod +x ralph*.sh
 ./ralph.sh claude 10
+
+# Monitor in another terminal
+./ralph-stats.sh watch
 ```
 
-Watch it implement your feature while you sleep.
+Watch it implement your feature while you sleep — and know exactly what it cost.
 
 ## The Bottom Line
 
@@ -246,6 +324,8 @@ If you want full control, fresh context, PRD-driven workflow, and persistent lea
 - PRD generation skills (`/prd` and `/ralph`)
 - Cleaner file structure — just copy what you need
 - AGENTS.md support for OpenAI Codex projects
+- **Stats tracking** — time, tokens, cost per iteration and in aggregate
+- **Real-time monitoring** — `./ralph-stats.sh watch` to monitor during runs
 
 As Geoffrey Huntley puts it: *"That's the beauty of Ralph — the technique is deterministically bad in an undeterministic world."*
 
