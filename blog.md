@@ -8,7 +8,7 @@ But here's what most people don't know: the built-in Claude Code ralph skill isn
 
 Geoffrey Huntley, who created the Ralph pattern, has explicitly stated this. In his words: "Claude Code's implementation isn't it."
 
-I've been using the original pattern, converted to work with Claude Code, and the difference is night and day. Here's why.
+I've been using the original pattern, converted to work with Claude Code and OpenAI Codex, and the difference is night and day. Here's why — and how you can use it in your own projects.
 
 ## The Problem with the Built-in Skill
 
@@ -38,15 +38,26 @@ Each iteration spawns a fresh Claude Code instance. No accumulated context. No d
 - **Git history** — what was done
 - **prd.json** — what's left to do
 - **progress.txt** — learnings and patterns
-- **CLAUDE.md** — codebase knowledge
+- **CLAUDE.md / AGENTS.md** — codebase knowledge
 
 This is the key insight: memory should be external, not in-context.
 
-## What I Built: PRD-Driven Ralph for Claude Code
+## What I Built: PRD-Driven Ralph
 
-I converted Ryan Carson's Amp implementation to work with Claude Code, and added some enhancements:
+I converted Ryan Carson's Amp implementation to work with both Claude Code and OpenAI Codex. Here's what makes it powerful:
 
-### 1. Structured User Stories
+### Multi-Engine Support
+
+Choose your AI engine:
+
+```bash
+./ralph.sh claude 10    # Claude Code with 10 iterations
+./ralph.sh codex 10     # OpenAI Codex with 10 iterations
+```
+
+Same workflow, same PRD format, different engine. Each has its own prompt file (`prompt-claude.md` or `prompt-codex.md`) that you can customize.
+
+### Structured User Stories
 
 Instead of a vague prompt, you define exactly what "done" looks like:
 
@@ -66,7 +77,7 @@ Instead of a vague prompt, you define exactly what "done" looks like:
 
 Ralph picks the highest priority story, implements it, runs quality checks, commits, marks it done, and exits. Next iteration picks up the next story.
 
-### 2. Learning Persistence
+### Learning Persistence
 
 Each iteration appends discoveries to progress.txt:
 
@@ -81,19 +92,114 @@ Each iteration appends discoveries to progress.txt:
 
 These patterns persist across iterations and across features. Future Ralph instances read this first.
 
-### 3. Browser Verification
+### Browser Verification
 
 For UI stories, Ralph uses Playwright or webapp-testing tools to actually verify changes work. A frontend story isn't complete until it's visually confirmed.
 
-### 4. Full Customization
+### Full Customization
 
-Every instruction is in prompt.md. Want project-specific rules? Edit the file:
+Every instruction is in `prompt-claude.md` (or `prompt-codex.md`). Want project-specific rules? Edit the file:
 
 ```markdown
 ## Quality Requirements
 - Run npm run typecheck before committing
 - Never modify files in src/legacy/
 - Always add tests for new utilities
+```
+
+## How to Use Ralph in Your Workflow
+
+Here's the complete workflow from feature idea to shipped code:
+
+### Step 1: Get the Files
+
+```bash
+# Clone the repo
+git clone https://github.com/jayozer/ralph.git
+
+# Copy to your project
+cp ralph/ralph.sh ralph/ralph-claude.sh ralph/prompt-claude.md ralph/prd.json.example /path/to/your-project/
+chmod +x /path/to/your-project/ralph*.sh
+```
+
+Or download directly:
+
+```bash
+cd /path/to/your-project
+curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph.sh
+curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph-claude.sh
+curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prompt-claude.md
+curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prd.json.example
+chmod +x ralph*.sh
+```
+
+### Step 2: Create Your PRD
+
+Copy the example and edit it with your user stories:
+
+```bash
+cp prd.json.example prd.json
+```
+
+**Tips for good stories:**
+- Each story should complete in ONE iteration (one context window)
+- Order by dependency: schema → backend → UI
+- Always include "Typecheck passes" in acceptance criteria
+- Add "Verify in browser" for UI stories
+
+### Step 3: Run Ralph
+
+```bash
+./ralph.sh claude 10   # Run 10 iterations with Claude Code
+```
+
+Ralph will:
+1. Create/switch to the branch specified in `prd.json`
+2. Pick the highest-priority incomplete story
+3. Implement it and run quality checks
+4. Commit changes and mark the story as `passes: true`
+5. Log learnings to `progress.txt`
+6. Repeat until done
+
+### Step 4: Monitor and Review
+
+```bash
+# Watch progress
+cat prd.json | jq '.userStories[] | {id, title, passes}'
+
+# See learnings
+cat progress.txt
+
+# Review commits
+git log --oneline -10
+```
+
+## Bonus: PRD Generation Skills (Claude Code Only)
+
+I've included two Claude Code skills that streamline the workflow even further:
+
+### `/prd` — Generate a PRD from an idea
+
+```
+/prd Add a task priority system with high/medium/low levels
+```
+
+The skill asks clarifying questions, then generates a structured PRD in `tasks/prd-[feature-name].md`.
+
+### `/ralph` — Convert PRD to JSON
+
+```
+/ralph convert tasks/prd-task-priority.md
+```
+
+Converts your PRD markdown into the `prd.json` format Ralph executes.
+
+**Install the skills:**
+
+```bash
+mkdir -p ~/.claude/skills
+cp -r /path/to/ralph/.claude/skills/prd ~/.claude/skills/
+cp -r /path/to/ralph/.claude/skills/ralph ~/.claude/skills/
 ```
 
 ## The Results
@@ -108,21 +214,22 @@ The key is structured iteration with verifiable acceptance criteria. Each story 
 
 I've open-sourced my implementation:
 
-**https://github.com/jayozer/ralph_code**
+**https://github.com/jayozer/ralph**
 
 Quick start:
 
 ```bash
-mkdir -p scripts/ralph
-curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/ralph.sh > scripts/ralph/ralph.sh
-curl -sL https://raw.githubusercontent.com/jayozer/ralph_code/main/prompt.md > scripts/ralph/prompt.md
-chmod +x scripts/ralph/ralph.sh
-```
+# Get the files
+git clone https://github.com/jayozer/ralph.git
+cp ralph/ralph.sh ralph/ralph-claude.sh ralph/prompt-claude.md ralph/prd.json.example ./
 
-Create a prd.json with your user stories, then:
+# Create your PRD
+cp prd.json.example prd.json
+# Edit prd.json with your user stories
 
-```bash
-./scripts/ralph/ralph.sh 10
+# Run Ralph
+chmod +x ralph*.sh
+./ralph.sh claude 10
 ```
 
 Watch it implement your feature while you sleep.
@@ -133,6 +240,13 @@ If you want a quick and dirty loop — use the built-in skill.
 
 If you want full control, fresh context, PRD-driven workflow, and persistent learning — use the original pattern.
 
+**What's new in this version:**
+- Multi-engine support (Claude Code + OpenAI Codex)
+- Separate prompt files for each engine
+- PRD generation skills (`/prd` and `/ralph`)
+- Cleaner file structure — just copy what you need
+- AGENTS.md support for OpenAI Codex projects
+
 As Geoffrey Huntley puts it: *"That's the beauty of Ralph — the technique is deterministically bad in an undeterministic world."*
 
 The built-in skill tries to be smart. The original pattern is deliberately simple. And simple wins.
@@ -141,4 +255,4 @@ The built-in skill tries to be smart. The original pattern is deliberately simpl
 
 ---
 
-**Credits:** Geoffrey Huntley (created the pattern), Ryan Carson (original Amp implementation), Claude Code (the AI that does the work).
+**Credits:** Geoffrey Huntley (created the pattern), Ryan Carson (original Amp implementation), Claude Code & OpenAI Codex (the AIs that do the work).

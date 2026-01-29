@@ -1,7 +1,7 @@
 #!/bin/bash
-# Ralph Wiggum - Long-running AI agent loop (Claude Code version)
-# Usage: ./ralph.sh [max_iterations]
-# Requires: Claude Code CLI (https://docs.anthropic.com/en/docs/claude-code)
+# Ralph Wiggum - Long-running AI agent loop (OpenAI Codex version)
+# Usage: ./ralph-codex.sh [max_iterations]
+# Requires: OpenAI Codex CLI (https://github.com/openai/codex)
 
 set -e
 
@@ -60,10 +60,10 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   echo "  Ralph Iteration $i of $MAX_ITERATIONS"
   echo "═══════════════════════════════════════════════════════"
   
-  # Run Claude Code with the ralph prompt
-  # Using -p (print mode) for non-interactive execution
-  # Using --dangerously-skip-permissions to allow autonomous operation
-  OUTPUT=$(claude -p "$(cat "$SCRIPT_DIR/prompt.md")" --dangerously-skip-permissions 2>&1 | tee /dev/stderr) || true
+  # Run OpenAI Codex with the ralph prompt
+  # Using exec for direct command execution
+  # Using --full-auto for autonomous operation (or --yolo for skip confirmations)
+  OUTPUT=$(codex exec "$(cat "$SCRIPT_DIR/prompt-codex.md")" --full-auto 2>&1 | tee /dev/stderr) || true
   
   # Check for completion signal
   if echo "$OUTPUT" | grep -q "<promise>COMPLETE</promise>"; then

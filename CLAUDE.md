@@ -2,7 +2,7 @@
 
 ## Overview
 
-Ralph is an autonomous AI agent loop that runs Claude Code repeatedly until all PRD items are complete. Each iteration is a fresh Claude Code instance with clean context.
+Ralph is an autonomous AI agent loop that runs Claude Code or OpenAI Codex repeatedly until all PRD items are complete. Each iteration is a fresh agent instance with clean context.
 
 ## Commands
 
@@ -14,13 +14,21 @@ cd flowchart && npm run dev
 cd flowchart && npm run build
 
 # Run Ralph (from your project that has prd.json)
-./ralph.sh [max_iterations]
+./ralph.sh [claude|codex] [max_iterations]
+
+# Examples:
+./ralph.sh claude 10    # Claude Code with 10 iterations
+./ralph.sh codex 5      # OpenAI Codex with 5 iterations
+./ralph.sh 10           # Claude Code (default) with 10 iterations
 ```
 
 ## Key Files
 
-- `ralph.sh` - The bash loop that spawns fresh Claude Code instances
-- `prompt.md` - Instructions given to each Claude Code instance
+- `ralph.sh` - Wrapper script to choose engine (claude/codex)
+- `ralph-claude.sh` - Claude Code specific agent loop
+- `ralph-codex.sh` - OpenAI Codex specific agent loop
+- `prompt-claude.md` - Instructions for Claude Code iterations
+- `prompt-codex.md` - Instructions for Codex iterations
 - `prd.json.example` - Example PRD format
 - `flowchart/` - Interactive React Flow diagram explaining how Ralph works
 - `.claude/skills/` - Claude Code skills for PRD generation and conversion
