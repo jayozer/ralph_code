@@ -71,3 +71,6 @@ flowchart/
 
 # Archive
 blog.md
+
+# Playwright MCP screenshots
+.playwright-mcp/

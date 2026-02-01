@@ -199,7 +199,7 @@ Retrieves downloaded files from a session. Polls until files are available.
 {
   "files": [
     {
-      "filename": "invoice-12345.pdf",
+      "filename": "deed-12345.pdf",
       "content_base64": "JVBERi0xLjQK...",
       "size_bytes": 45678
     }
