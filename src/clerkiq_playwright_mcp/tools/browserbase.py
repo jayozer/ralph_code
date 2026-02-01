@@ -214,3 +214,29 @@ async def browserbase_get_downloads(
         total_files=0,
         message=f"No downloads found within {timeout_seconds} seconds",
     )
+
+
+async def browserbase_stop_session(
+    session_id: Annotated[str, "The Browserbase session ID to stop"],
+) -> bool:
+    """
+    Stop a Browserbase session to release resources and reduce costs.
+
+    Call this when you are done with a session to clean up cloud resources.
+
+    Args:
+        session_id: The Browserbase session ID from browserbase_create_session
+
+    Returns:
+        True if session stopped successfully, False on any error
+    """
+    try:
+        if not BROWSERBASE_PROJECT_ID:
+            return False
+        client = get_client()
+        client.sessions.update(
+            session_id, project_id=BROWSERBASE_PROJECT_ID, status="REQUEST_RELEASE"
+        )
+        return True
+    except Exception:
+        return False
