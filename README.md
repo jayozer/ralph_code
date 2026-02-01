@@ -1,6 +1,6 @@
 # ClerkIQ Playwright MCP
 
-A custom MCP (Model Context Protocol) server that combines Playwright browser automation with Browserbase cloud browser infrastructure. Built for ClerkIQ's AI-powered invoice processing workflows.
+A custom MCP (Model Context Protocol) server that combines Playwright browser automation with Browserbase cloud browser infrastructure. Built for ClerkIQ's AI-powered mortgage document processing workflows.
 
 ## What This Does
 
@@ -39,7 +39,7 @@ This MCP server solves a critical problem: **running browser automation in the c
 
 ### The Problem
 
-ClerkIQ needs to automate invoice downloads from vendor portals (Amazon Business, Staples, etc.). These portals have:
+ClerkIQ needs to automate mortgage document downloads from county portals. These portals have:
 
 1. **Bot detection** - Block headless browsers and datacenter IPs
 2. **CAPTCHAs** - Require human verification
@@ -60,7 +60,7 @@ This MCP server combines:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                        ClerkIQ Invoice Processing                        │
+│                    ClerkIQ Mortgage Document Processing                  │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -80,10 +80,10 @@ This MCP server combines:
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ 3. AUTOMATE BROWSER (Playwright tools)                                   │
-│    browser_navigate("https://amazon.business.com")                       │
-│    browser_type(ref="email", text="user@company.com")                   │
-│    browser_click(ref="login-button")                                     │
-│    browser_click(ref="download-invoice")  ← Triggers PDF download       │
+│    browser_navigate("https://county-recorder.gov/documents")             │
+│    browser_type(ref="search", text="deed-number-12345")                  │
+│    browser_click(ref="search-button")                                    │
+│    browser_click(ref="download-document")  ← Triggers PDF download      │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -91,7 +91,7 @@ This MCP server combines:
 │ 4. RETRIEVE DOWNLOADS                                                    │
 │    browserbase_get_downloads(session_id)                                 │
 │    → Returns: [{filename, content_base64, size_bytes}, ...]             │
-│    → Decode base64 → Save invoice PDFs to ClerkIQ storage               │
+│    → Decode base64 → Save mortgage docs to ClerkIQ storage              │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
                                     ▼
@@ -103,9 +103,9 @@ This MCP server combines:
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ 6. PROCESS INVOICES                                                      │
+│ 6. PROCESS DOCUMENTS                                                     │
 │    ClerkIQ extracts data from PDFs using AI                              │
-│    → Vendor, amount, date, line items, etc.                              │
+│    → Property details, parties, dates, legal descriptions, etc.          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -266,12 +266,12 @@ for file in downloads["files"]:
 browserbase_stop_session(session_id=session["session_id"])
 ```
 
-### ClerkIQ Invoice Download Example
+### ClerkIQ Mortgage Document Download Example
 
 ```
-User: Download my latest invoice from Amazon Business
+User: Download the deed for property 123-456-789 from Orange County
 
-Claude: I'll create a Browserbase session and navigate to Amazon Business.
+Claude: I'll create a Browserbase session and navigate to the county portal.
 
 1. Creating session with proxies and CAPTCHA solving...
    ✓ Session created: 810a5708-94e6-4e91-8a94-d9c4dc68173e
@@ -279,30 +279,29 @@ Claude: I'll create a Browserbase session and navigate to Amazon Business.
 2. Configuring downloads...
    ✓ Downloads configured
 
-3. Navigating to Amazon Business...
-   [browser_navigate to https://amazon.business.com]
+3. Navigating to Orange County Recorder...
+   [browser_navigate to https://ocrecorder.com/search]
 
-4. Taking snapshot to find login form...
+4. Taking snapshot to find search form...
    [browser_snapshot]
 
-5. Entering credentials...
-   [browser_type email field]
-   [browser_type password field]
-   [browser_click sign-in button]
+5. Searching for property...
+   [browser_type parcel number field: "123-456-789"]
+   [browser_click search button]
 
-6. Navigating to orders...
-   [browser_click "Your Orders"]
+6. Selecting document...
+   [browser_click "Grant Deed - 2024-001234"]
 
-7. Downloading invoice...
-   [browser_click "Download Invoice"]
+7. Downloading document...
+   [browser_click "Download PDF"]
 
 8. Retrieving downloaded file...
-   ✓ Retrieved: invoice-2024-01-15.pdf (125KB)
+   ✓ Retrieved: grant-deed-2024-001234.pdf (2.3MB)
 
 9. Stopping session...
    ✓ Session stopped
 
-I've downloaded your invoice. The file is invoice-2024-01-15.pdf.
+I've downloaded the deed. The file is grant-deed-2024-001234.pdf.
 ```
 
 ---
@@ -364,7 +363,7 @@ clerkiq-playwright-mcp/
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                            Claude Code                                   │
 │                                                                          │
-│  User: "Download invoice from Amazon Business"                          │
+│  User: "Download deed from Orange County Recorder"                      │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
                                     │
