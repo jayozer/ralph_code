@@ -131,7 +131,7 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   # Using -p (print mode) for non-interactive execution
   # Using --dangerously-skip-permissions to allow autonomous operation
   # Using --output-format json to capture stats
-  OUTPUT=$(claude -p "$(cat "$SCRIPT_DIR/prompt-claude.md")" --dangerously-skip-permissions --output-format json 2>&1) || true
+  OUTPUT=$(claude -p "$(cat "$SCRIPT_DIR/prompt-claude.md")" --model claude-opus-4-5-20251101 --dangerously-skip-permissions --output-format json 2>&1) || true
 
   # Extract result text for display and completion check
   RESULT=$(echo "$OUTPUT" | jq -r '.result // empty' 2>/dev/null || echo "$OUTPUT")

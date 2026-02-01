@@ -21,9 +21,8 @@ from browserbase.types.session_create_params import BrowserSettings
 MIN_ZIP_SIZE = 22
 
 
-# Environment variables - read at module level for get_client()
-BROWSERBASE_API_KEY = os.environ.get("BROWSERBASE_API_KEY")
-BROWSERBASE_PROJECT_ID = os.environ.get("BROWSERBASE_PROJECT_ID")
+# Environment variables are read at runtime in get_client() and get_project_id()
+# to allow for proper testing and dynamic configuration
 
 
 class BrowserbaseSession(BaseModel):
@@ -56,9 +55,18 @@ class DownloadsResult(BaseModel):
 
 def get_client() -> Browserbase:
     """Get or create Browserbase client."""
-    if not BROWSERBASE_API_KEY:
+    api_key = os.environ.get("BROWSERBASE_API_KEY")
+    if not api_key:
         raise ValueError("BROWSERBASE_API_KEY environment variable not set")
-    return Browserbase(api_key=BROWSERBASE_API_KEY)
+    return Browserbase(api_key=api_key)
+
+
+def get_project_id() -> str:
+    """Get Browserbase project ID from environment."""
+    project_id = os.environ.get("BROWSERBASE_PROJECT_ID")
+    if not project_id:
+        raise ValueError("BROWSERBASE_PROJECT_ID environment variable not set")
+    return project_id
 
 
 async def browserbase_create_session(
@@ -75,13 +83,11 @@ async def browserbase_create_session(
     After creating a session, use browserbase_configure_downloads to enable
     cloud download sync before navigating to pages.
     """
-    if not BROWSERBASE_PROJECT_ID:
-        raise ValueError("BROWSERBASE_PROJECT_ID environment variable not set")
-
+    project_id = get_project_id()
     client = get_client()
 
     session = client.sessions.create(
-        project_id=BROWSERBASE_PROJECT_ID,
+        project_id=project_id,
         proxies=proxies,
         timeout=timeout_seconds,
         keep_alive=True,
@@ -231,11 +237,10 @@ async def browserbase_stop_session(
         True if session stopped successfully, False on any error
     """
     try:
-        if not BROWSERBASE_PROJECT_ID:
-            return False
+        project_id = get_project_id()
         client = get_client()
         client.sessions.update(
-            session_id, project_id=BROWSERBASE_PROJECT_ID, status="REQUEST_RELEASE"
+            session_id, project_id=project_id, status="REQUEST_RELEASE"
         )
         return True
     except Exception:

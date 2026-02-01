@@ -13,12 +13,16 @@ import pytest
 
 
 @pytest.fixture(autouse=True)
-def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set test environment variables for all tests.
+def mock_env_vars(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Set test environment variables for unit tests only.
 
     Autouse fixture that sets BROWSERBASE_API_KEY and BROWSERBASE_PROJECT_ID
-    to test values before each test runs.
+    to test values before each test runs, EXCEPT for integration tests which
+    need real credentials.
     """
+    # Skip mocking for integration tests - they use real credentials
+    if "test_integration" in request.node.nodeid:
+        return
     monkeypatch.setenv("BROWSERBASE_API_KEY", "test-api-key")
     monkeypatch.setenv("BROWSERBASE_PROJECT_ID", "test-project-id")
 

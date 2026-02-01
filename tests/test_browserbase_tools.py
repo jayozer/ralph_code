@@ -19,9 +19,6 @@ class TestBrowserbaseCreateSession:
         with patch(
             "clerkiq_playwright_mcp.tools.browserbase.get_client",
             return_value=mock_browserbase_client,
-        ), patch(
-            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_PROJECT_ID",
-            "test-project-id",
         ):
             from clerkiq_playwright_mcp.tools.browserbase import (
                 browserbase_create_session,
@@ -49,9 +46,6 @@ class TestBrowserbaseCreateSession:
         with patch(
             "clerkiq_playwright_mcp.tools.browserbase.get_client",
             return_value=mock_browserbase_client,
-        ), patch(
-            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_PROJECT_ID",
-            "test-project-id",
         ):
             from clerkiq_playwright_mcp.tools.browserbase import (
                 browserbase_create_session,
@@ -77,40 +71,32 @@ class TestBrowserbaseCreateSession:
             assert browser_settings["solve_captchas"] is False
 
     @pytest.mark.asyncio
-    async def test_create_session_missing_api_key(self) -> None:
+    async def test_create_session_missing_api_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Test ValueError is raised when BROWSERBASE_API_KEY is not set."""
-        with patch(
-            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_API_KEY",
-            None,
-        ), patch(
-            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_PROJECT_ID",
-            "test-project-id",
-        ):
-            from clerkiq_playwright_mcp.tools.browserbase import (
-                browserbase_create_session,
-            )
+        monkeypatch.delenv("BROWSERBASE_API_KEY", raising=False)
 
-            with pytest.raises(ValueError, match="BROWSERBASE_API_KEY"):
-                await browserbase_create_session()
+        from clerkiq_playwright_mcp.tools.browserbase import (
+            browserbase_create_session,
+        )
+
+        with pytest.raises(ValueError, match="BROWSERBASE_API_KEY"):
+            await browserbase_create_session()
 
     @pytest.mark.asyncio
     async def test_create_session_missing_project_id(
-        self, mock_browserbase_client: MagicMock
+        self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Test ValueError is raised when BROWSERBASE_PROJECT_ID is not set."""
-        with patch(
-            "clerkiq_playwright_mcp.tools.browserbase.get_client",
-            return_value=mock_browserbase_client,
-        ), patch(
-            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_PROJECT_ID",
-            None,
-        ):
-            from clerkiq_playwright_mcp.tools.browserbase import (
-                browserbase_create_session,
-            )
+        monkeypatch.delenv("BROWSERBASE_PROJECT_ID", raising=False)
 
-            with pytest.raises(ValueError, match="BROWSERBASE_PROJECT_ID"):
-                await browserbase_create_session()
+        from clerkiq_playwright_mcp.tools.browserbase import (
+            browserbase_create_session,
+        )
+
+        with pytest.raises(ValueError, match="BROWSERBASE_PROJECT_ID"):
+            await browserbase_create_session()
 
 
 class TestBrowserbaseConfigureDownloads:
@@ -322,9 +308,6 @@ class TestBrowserbaseStopSession:
         with patch(
             "clerkiq_playwright_mcp.tools.browserbase.get_client",
             return_value=mock_browserbase_client,
-        ), patch(
-            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_PROJECT_ID",
-            "test-project-id",
         ):
             from clerkiq_playwright_mcp.tools.browserbase import (
                 browserbase_stop_session,
@@ -352,9 +335,6 @@ class TestBrowserbaseStopSession:
         with patch(
             "clerkiq_playwright_mcp.tools.browserbase.get_client",
             return_value=mock_browserbase_client,
-        ), patch(
-            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_PROJECT_ID",
-            "test-project-id",
         ):
             from clerkiq_playwright_mcp.tools.browserbase import (
                 browserbase_stop_session,
