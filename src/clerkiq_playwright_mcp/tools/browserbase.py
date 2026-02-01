@@ -3,9 +3,12 @@
 Per TDD section 4.2.2 - Tools for managing Browserbase cloud browser sessions.
 """
 
+import asyncio
+import json
 import os
 from typing import Annotated
 
+import websockets
 from pydantic import BaseModel, Field
 from browserbase import Browserbase
 from browserbase.types.session_create_params import BrowserSettings
@@ -65,3 +68,46 @@ async def browserbase_create_session(
         cdp_url=session.connect_url,
         live_url=getattr(session, "live_url", None),
     )
+
+
+async def browserbase_configure_downloads(
+    cdp_url: Annotated[str, "CDP websocket URL from browserbase_create_session"],
+) -> bool:
+    """
+    Configure download behavior for a Browserbase session.
+
+    Must be called AFTER connecting to the session but BEFORE triggering any downloads.
+    This enables downloads to be synced to Browserbase cloud storage for later retrieval.
+
+    Args:
+        cdp_url: The CDP websocket URL from browserbase_create_session
+
+    Returns:
+        True if downloads configured successfully, False on error
+    """
+    try:
+        async with websockets.connect(cdp_url) as ws:
+            # Send Browser.setDownloadBehavior CDP command
+            command = {
+                "id": 1,
+                "method": "Browser.setDownloadBehavior",
+                "params": {
+                    "behavior": "allow",
+                    "downloadPath": "downloads",
+                    "eventsEnabled": True,
+                },
+            }
+            await ws.send(json.dumps(command))
+
+            # Wait for response with 10 second timeout
+            response_str = await asyncio.wait_for(ws.recv(), timeout=10.0)
+            response = json.loads(response_str)
+
+            # Check for error in CDP response
+            if "error" in response:
+                return False
+
+            return True
+
+    except (websockets.exceptions.WebSocketException, asyncio.TimeoutError, OSError):
+        return False
