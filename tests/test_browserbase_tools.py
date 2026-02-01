@@ -309,3 +309,58 @@ class TestBrowserbaseGetDownloads:
             assert "Successfully retrieved 1 file" in result.message
             # Verify it polled at least twice
             assert call_count >= 2
+
+
+class TestBrowserbaseStopSession:
+    """Tests for browserbase_stop_session function."""
+
+    @pytest.mark.asyncio
+    async def test_stop_session_success(
+        self, mock_browserbase_client: MagicMock
+    ) -> None:
+        """Test successful session stop verifies update called with REQUEST_RELEASE."""
+        with patch(
+            "clerkiq_playwright_mcp.tools.browserbase.get_client",
+            return_value=mock_browserbase_client,
+        ), patch(
+            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_PROJECT_ID",
+            "test-project-id",
+        ):
+            from clerkiq_playwright_mcp.tools.browserbase import (
+                browserbase_stop_session,
+            )
+
+            result = await browserbase_stop_session(session_id="test-session-id")
+
+            assert result is True
+
+            # Verify update was called with correct parameters
+            mock_browserbase_client.sessions.update.assert_called_once_with(
+                "test-session-id",
+                project_id="test-project-id",
+                status="REQUEST_RELEASE",
+            )
+
+    @pytest.mark.asyncio
+    async def test_stop_session_error(
+        self, mock_browserbase_client: MagicMock
+    ) -> None:
+        """Test session stop handles API errors gracefully."""
+        # Configure mock to raise an exception
+        mock_browserbase_client.sessions.update.side_effect = Exception("API error")
+
+        with patch(
+            "clerkiq_playwright_mcp.tools.browserbase.get_client",
+            return_value=mock_browserbase_client,
+        ), patch(
+            "clerkiq_playwright_mcp.tools.browserbase.BROWSERBASE_PROJECT_ID",
+            "test-project-id",
+        ):
+            from clerkiq_playwright_mcp.tools.browserbase import (
+                browserbase_stop_session,
+            )
+
+            result = await browserbase_stop_session(session_id="test-session-id")
+
+            # Should return False on error, not raise
+            assert result is False
