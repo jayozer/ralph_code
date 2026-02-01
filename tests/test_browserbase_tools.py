@@ -200,3 +200,112 @@ class TestBrowserbaseConfigureDownloads:
             )
 
             assert result is False
+
+
+class TestBrowserbaseGetDownloads:
+    """Tests for browserbase_get_downloads function."""
+
+    @pytest.mark.asyncio
+    async def test_get_downloads_success(
+        self, mock_browserbase_client: MagicMock, sample_zip_with_pdf: bytes
+    ) -> None:
+        """Test successful download retrieval verifies ZIP extraction and base64 encoding."""
+        import base64
+
+        # Configure mock to return a ZIP with a PDF
+        mock_browserbase_client.sessions.downloads.list.return_value.read.return_value = (
+            sample_zip_with_pdf
+        )
+
+        with patch(
+            "clerkiq_playwright_mcp.tools.browserbase.get_client",
+            return_value=mock_browserbase_client,
+        ):
+            from clerkiq_playwright_mcp.tools.browserbase import (
+                browserbase_get_downloads,
+            )
+
+            result = await browserbase_get_downloads(
+                session_id="test-session-id",
+                timeout_seconds=10,
+                poll_interval=0.1,
+            )
+
+            assert result.total_files == 1
+            assert len(result.files) == 1
+            assert result.files[0].filename == "test-document.pdf"
+            assert result.files[0].size_bytes > 0
+            assert "Successfully retrieved 1 file" in result.message
+
+            # Verify base64 encoding is valid
+            decoded = base64.b64decode(result.files[0].content_base64)
+            assert decoded.startswith(b"%PDF-1.4")
+
+    @pytest.mark.asyncio
+    async def test_get_downloads_empty(
+        self, mock_browserbase_client: MagicMock, empty_zip: bytes
+    ) -> None:
+        """Test get downloads handles no downloads case (empty ZIP or timeout)."""
+        # Configure mock to return an empty ZIP
+        mock_browserbase_client.sessions.downloads.list.return_value.read.return_value = (
+            empty_zip
+        )
+
+        with patch(
+            "clerkiq_playwright_mcp.tools.browserbase.get_client",
+            return_value=mock_browserbase_client,
+        ):
+            from clerkiq_playwright_mcp.tools.browserbase import (
+                browserbase_get_downloads,
+            )
+
+            result = await browserbase_get_downloads(
+                session_id="test-session-id",
+                timeout_seconds=1,
+                poll_interval=0.1,
+            )
+
+            assert result.total_files == 0
+            assert len(result.files) == 0
+            assert "No downloads found" in result.message
+
+    @pytest.mark.asyncio
+    async def test_get_downloads_404_then_success(
+        self, mock_browserbase_client: MagicMock, sample_zip_with_pdf: bytes
+    ) -> None:
+        """Test get downloads polls and handles 404 before success."""
+        # First call raises 404, second call returns ZIP
+        call_count = 0
+
+        def mock_read() -> bytes:
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise Exception("404 Not Found")
+            return sample_zip_with_pdf
+
+        mock_browserbase_client.sessions.downloads.list.return_value.read.side_effect = (
+            mock_read
+        )
+
+        with patch(
+            "clerkiq_playwright_mcp.tools.browserbase.get_client",
+            return_value=mock_browserbase_client,
+        ):
+            from clerkiq_playwright_mcp.tools.browserbase import (
+                browserbase_get_downloads,
+            )
+
+            result = await browserbase_get_downloads(
+                session_id="test-session-id",
+                timeout_seconds=10,
+                poll_interval=0.1,
+            )
+
+            # Should succeed after polling past the 404
+            assert result.total_files == 1
+            assert len(result.files) == 1
+            assert result.files[0].filename == "test-document.pdf"
+            assert "Successfully retrieved 1 file" in result.message
+            # Verify it polled at least twice
+            assert call_count >= 2
