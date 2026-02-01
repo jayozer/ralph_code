@@ -1,458 +1,449 @@
-# Ralph
+# ClerkIQ Playwright MCP
 
-![Ralph](ralph.webp)
+A custom MCP (Model Context Protocol) server that combines Playwright browser automation with Browserbase cloud browser infrastructure. Built for ClerkIQ's AI-powered invoice processing workflows.
 
-> "Ralph is a Bash loop." — [Geoffrey Huntley](https://ghuntley.com/ralph/), creator of the Ralph pattern
+## What This Does
 
-**The original, PRD-driven Ralph implementation.** Works with Claude Code CLI and OpenAI Codex. Converted from [Ryan Carson's Amp version](https://x.com/ryancarson/status/2008548371712135632).
+This MCP server solves a critical problem: **running browser automation in the cloud with persistent download retrieval**.
 
-This is **not** the built-in Claude Code ralph skill. This is a customizable, transparent implementation that gives you full control over the autonomous loop — the way Geoffrey Huntley intended.
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         ClerkIQ Playwright MCP                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────────────┐     ┌──────────────────────────────────────┐ │
+│  │  Browserbase Tools   │     │      Playwright Tools (Proxied)      │ │
+│  │  (Custom)            │     │      from @playwright/mcp            │ │
+│  ├──────────────────────┤     ├──────────────────────────────────────┤ │
+│  │ • create_session     │     │ • browser_navigate                   │ │
+│  │ • configure_downloads│     │ • browser_click                      │ │
+│  │ • get_downloads      │     │ • browser_type                       │ │
+│  │ • stop_session       │     │ • browser_snapshot                   │ │
+│  └──────────────────────┘     │ • browser_take_screenshot            │ │
+│           │                   │ • ... (all Playwright MCP tools)     │ │
+│           │                   └──────────────────────────────────────┘ │
+│           │                                     │                      │
+│           ▼                                     ▼                      │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │                    Browserbase Cloud Browser                      │  │
+│  │  • Residential proxies (bypass bot detection)                     │  │
+│  │  • CAPTCHA solving                                                │  │
+│  │  • Cloud-synced downloads                                         │  │
+│  │  • Headless Chrome in the cloud                                   │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
----
+## Why We Built This
 
-## Table of Contents
+### The Problem
 
-- [Quick Start](#quick-start)
-- [Step-by-Step Guide](#step-by-step-guide)
-- [Why This Over the Built-in Skill?](#why-this-over-the-built-in-skill)
-- [How It Works](#how-it-works)
-- [The PRD Skills (Claude Code Only)](#the-prd-skills-claude-code-only)
-- [Writing Good User Stories](#writing-good-user-stories)
-- [Customization](#customization)
-- [Debugging](#debugging)
-- [Credits](#credits)
+ClerkIQ needs to automate invoice downloads from vendor portals (Amazon Business, Staples, etc.). These portals have:
 
----
+1. **Bot detection** - Block headless browsers and datacenter IPs
+2. **CAPTCHAs** - Require human verification
+3. **File downloads** - PDFs that need to be retrieved after browser sessions
+4. **Complex authentication** - Multi-step login flows
 
-## Quick Start
+### The Solution
 
-```bash
-# 1. Clone this repo
-git clone https://github.com/jayozer/ralph.git
-cd ralph
+This MCP server combines:
 
-# 2. Copy files to your project
-cp ralph.sh ralph-claude.sh prompt-claude.md prd.json.example /path/to/your-project/
+| Component | Purpose |
+|-----------|---------|
+| **Browserbase** | Cloud browsers with residential proxies + CAPTCHA solving |
+| **Playwright MCP** | Full browser automation capabilities |
+| **Custom download tools** | Retrieve files from cloud browser sessions |
 
-# 3. In your project, create prd.json from the example
-cd /path/to/your-project
-cp prd.json.example prd.json
-# Edit prd.json with your user stories
+### ClerkIQ Integration Flow
 
-# 4. Run Ralph
-./ralph.sh claude 10   # Claude Code with 10 iterations
-./ralph.sh codex 10    # OpenAI Codex with 10 iterations
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        ClerkIQ Invoice Processing                        │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 1. CREATE SESSION                                                        │
+│    browserbase_create_session(proxies=true, solve_captchas=true)        │
+│    → Returns: session_id, cdp_url                                        │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 2. CONFIGURE DOWNLOADS                                                   │
+│    browserbase_configure_downloads(cdp_url)                              │
+│    → Enables cloud download sync via CDP protocol                        │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 3. AUTOMATE BROWSER (Playwright tools)                                   │
+│    browser_navigate("https://amazon.business.com")                       │
+│    browser_type(ref="email", text="user@company.com")                   │
+│    browser_click(ref="login-button")                                     │
+│    browser_click(ref="download-invoice")  ← Triggers PDF download       │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 4. RETRIEVE DOWNLOADS                                                    │
+│    browserbase_get_downloads(session_id)                                 │
+│    → Returns: [{filename, content_base64, size_bytes}, ...]             │
+│    → Decode base64 → Save invoice PDFs to ClerkIQ storage               │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 5. CLEANUP                                                               │
+│    browserbase_stop_session(session_id)                                  │
+│    → Releases cloud resources, stops billing                             │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│ 6. PROCESS INVOICES                                                      │
+│    ClerkIQ extracts data from PDFs using AI                              │
+│    → Vendor, amount, date, line items, etc.                              │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Step-by-Step Guide
+## Installation
 
 ### Prerequisites
 
-| Requirement | Installation |
-|-------------|--------------|
-| **Claude Code CLI** | [Install guide](https://docs.anthropic.com/en/docs/claude-code) |
-| **OpenAI Codex CLI** (optional) | [Install guide](https://github.com/openai/codex) |
-| **jq** | `brew install jq` (macOS) or `apt install jq` (Linux) |
-| **Git repository** | Your project must be a git repo |
+- Python 3.11+
+- [UV](https://docs.astral.sh/uv/) for package management
+- Browserbase account with API key and project ID
+- Node.js (for Playwright MCP proxy)
 
-### Step 1: Get the Ralph Files
-
-**Option A: Clone and copy**
-```bash
-git clone https://github.com/jayozer/ralph.git
-cd ralph
-
-# For Claude Code:
-cp ralph.sh ralph-claude.sh prompt-claude.md prd.json.example /path/to/your-project/
-
-# For OpenAI Codex:
-cp ralph.sh ralph-codex.sh prompt-codex.md prd.json.example /path/to/your-project/
-
-# For both engines:
-cp ralph.sh ralph-claude.sh ralph-codex.sh prompt-claude.md prompt-codex.md prd.json.example /path/to/your-project/
-```
-
-**Option B: Download directly**
-```bash
-cd /path/to/your-project
-
-# Core files (Claude Code)
-curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph.sh
-curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph-claude.sh
-curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prompt-claude.md
-curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prd.json.example
-
-# Additional files for Codex (optional)
-curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph-codex.sh
-curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prompt-codex.md
-
-chmod +x ralph*.sh
-```
-
-### Step 2: Create Your prd.json
-
-Copy the example and edit it:
+### Setup
 
 ```bash
-cp prd.json.example prd.json
+# Clone the repo
+git clone https://github.com/jayozer/clerkiq-playwright-mcp.git
+cd clerkiq-playwright-mcp
+
+# Install dependencies
+uv sync
+
+# Create .env file
+cat > .env << EOF
+BROWSERBASE_API_KEY=your_api_key_here
+BROWSERBASE_PROJECT_ID=your_project_id_here
+EOF
 ```
 
-**prd.json structure:**
+### Install in Claude Code
+
+```bash
+uv run fastmcp install claude-code src/clerkiq_playwright_mcp/server.py \
+  --name clerkiq-playwright \
+  --with browserbase \
+  --with websockets \
+  --env-file .env
+```
+
+Then restart Claude Code. The tools will be available as `mcp__clerkiq-playwright__*`.
+
+---
+
+## Tools Reference
+
+### Custom Browserbase Tools
+
+#### `browserbase_create_session`
+
+Creates a new cloud browser session with Browserbase.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `proxies` | bool | `true` | Enable residential proxies |
+| `solve_captchas` | bool | `true` | Enable automatic CAPTCHA solving |
+| `timeout_seconds` | int | `1800` | Session timeout (30 min default) |
+
+**Returns:**
 ```json
 {
-  "project": "MyApp",
-  "branchName": "ralph/my-feature",
-  "description": "Add user authentication",
-  "userStories": [
-    {
-      "id": "US-001",
-      "title": "Add users table",
-      "description": "As a developer, I need a users table to store credentials.",
-      "acceptanceCriteria": [
-        "Create users table with id, email, password_hash",
-        "Add migration file",
-        "Typecheck passes"
-      ],
-      "priority": 1,
-      "passes": false,
-      "notes": ""
-    },
-    {
-      "id": "US-002",
-      "title": "Add login endpoint",
-      "description": "As a user, I can log in with email and password.",
-      "acceptanceCriteria": [
-        "POST /api/login accepts email and password",
-        "Returns JWT token on success",
-        "Returns 401 on invalid credentials",
-        "Typecheck passes"
-      ],
-      "priority": 2,
-      "passes": false,
-      "notes": ""
-    }
-  ]
+  "session_id": "810a5708-94e6-4e91-8a94-d9c4dc68173e",
+  "cdp_url": "wss://connect.usw2.browserbase.com/?signingKey=...",
+  "live_url": "https://browserbase.com/sessions/810a5708..."
 }
 ```
 
-**Key fields:**
-- `branchName` — Ralph creates/uses this branch
-- `priority` — Lower numbers run first (1, 2, 3...)
-- `passes` — Set to `false`, Ralph sets to `true` when done
-- `acceptanceCriteria` — Must be verifiable (always include "Typecheck passes")
+#### `browserbase_configure_downloads`
 
-### Step 3: Run Ralph
+Configures the browser to sync downloads to Browserbase cloud storage. **Must be called after connecting but before any downloads.**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `cdp_url` | string | CDP websocket URL from create_session |
+
+**Returns:** `{"result": true}` on success
+
+#### `browserbase_get_downloads`
+
+Retrieves downloaded files from a session. Polls until files are available.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `session_id` | string | required | Session ID from create_session |
+| `timeout_seconds` | int | `120` | Max wait time for downloads |
+| `poll_interval` | float | `5` | Seconds between polling attempts |
+
+**Returns:**
+```json
+{
+  "files": [
+    {
+      "filename": "invoice-12345.pdf",
+      "content_base64": "JVBERi0xLjQK...",
+      "size_bytes": 45678
+    }
+  ],
+  "count": 1,
+  "message": "Retrieved 1 file(s)"
+}
+```
+
+#### `browserbase_stop_session`
+
+Stops a session and releases cloud resources. **Always call this when done to avoid unnecessary charges.**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `session_id` | string | Session ID to stop |
+
+**Returns:** `{"result": true}` on success
+
+### Proxied Playwright Tools
+
+All standard Playwright MCP tools are available:
+
+| Tool | Description |
+|------|-------------|
+| `browser_navigate` | Navigate to a URL |
+| `browser_click` | Click an element |
+| `browser_type` | Type text into an input |
+| `browser_snapshot` | Get accessibility tree (for finding elements) |
+| `browser_take_screenshot` | Capture screenshot |
+| `browser_fill_form` | Fill multiple form fields |
+| `browser_select_option` | Select dropdown option |
+| `browser_press_key` | Press keyboard key |
+| `browser_wait_for` | Wait for text or time |
+| `browser_tabs` | Manage browser tabs |
+| ... | And more |
+
+---
+
+## Usage Examples
+
+### Basic Session Lifecycle
+
+```python
+# In Claude Code or any MCP client
+
+# 1. Create session
+session = browserbase_create_session(proxies=True, solve_captchas=True)
+
+# 2. Configure downloads
+browserbase_configure_downloads(cdp_url=session["cdp_url"])
+
+# 3. Navigate and interact
+browser_navigate(url="https://example.com")
+browser_click(ref="download-button")
+
+# 4. Get downloaded files
+downloads = browserbase_get_downloads(session_id=session["session_id"])
+for file in downloads["files"]:
+    content = base64.b64decode(file["content_base64"])
+    # Save or process the file
+
+# 5. Cleanup
+browserbase_stop_session(session_id=session["session_id"])
+```
+
+### ClerkIQ Invoice Download Example
+
+```
+User: Download my latest invoice from Amazon Business
+
+Claude: I'll create a Browserbase session and navigate to Amazon Business.
+
+1. Creating session with proxies and CAPTCHA solving...
+   ✓ Session created: 810a5708-94e6-4e91-8a94-d9c4dc68173e
+
+2. Configuring downloads...
+   ✓ Downloads configured
+
+3. Navigating to Amazon Business...
+   [browser_navigate to https://amazon.business.com]
+
+4. Taking snapshot to find login form...
+   [browser_snapshot]
+
+5. Entering credentials...
+   [browser_type email field]
+   [browser_type password field]
+   [browser_click sign-in button]
+
+6. Navigating to orders...
+   [browser_click "Your Orders"]
+
+7. Downloading invoice...
+   [browser_click "Download Invoice"]
+
+8. Retrieving downloaded file...
+   ✓ Retrieved: invoice-2024-01-15.pdf (125KB)
+
+9. Stopping session...
+   ✓ Session stopped
+
+I've downloaded your invoice. The file is invoice-2024-01-15.pdf.
+```
+
+---
+
+## Testing
+
+### Run All Tests
 
 ```bash
-# Claude Code (default)
-./ralph.sh 10              # 10 iterations
-./ralph.sh claude 10       # Explicit: Claude Code
+# Unit tests only (no Browserbase API calls)
+uv run pytest tests/ -v --ignore=tests/test_integration.py
 
-# OpenAI Codex
-./ralph.sh codex 10        # 10 iterations with Codex
+# Integration tests (requires real Browserbase credentials)
+uv run pytest tests/test_integration.py -v
 ```
 
-**What happens:**
-1. Ralph creates/switches to the branch in `branchName`
-2. Picks the highest-priority story where `passes: false`
-3. Implements it, runs quality checks, commits
-4. Updates `prd.json` to set `passes: true`
-5. Logs learnings to `progress.txt`
-6. Repeats until all stories pass or max iterations reached
+### Test Coverage
 
-### Step 4: Monitor Progress
+| Test File | Tests | Coverage |
+|-----------|-------|----------|
+| `test_browserbase_tools.py` | 12 | All 4 Browserbase tools |
+| `test_models.py` | 15 | Pydantic model validation |
+| `test_server.py` | 2 | Server configuration |
+| `test_integration.py` | 2 | End-to-end with real Browserbase |
+
+**Total: 31 tests**
+
+---
+
+## Project Structure
+
+```
+clerkiq-playwright-mcp/
+├── src/clerkiq_playwright_mcp/
+│   ├── __init__.py
+│   ├── server.py              # FastMCP server with Playwright proxy
+│   ├── models.py              # Pydantic models
+│   └── tools/
+│       ├── __init__.py
+│       └── browserbase.py     # Custom Browserbase tools
+├── tests/
+│   ├── conftest.py            # Test fixtures
+│   ├── test_browserbase_tools.py
+│   ├── test_models.py
+│   ├── test_server.py
+│   └── test_integration.py
+├── .env                       # API keys (gitignored)
+├── pyproject.toml
+└── README.md
+```
+
+---
+
+## Architecture
+
+### How the MCP Server Works
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            Claude Code                                   │
+│                                                                          │
+│  User: "Download invoice from Amazon Business"                          │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ MCP Protocol (stdio)
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     ClerkIQ Playwright MCP Server                        │
+│                         (FastMCP + Python)                               │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                     Tool Router                                  │    │
+│  │                                                                  │    │
+│  │   browserbase_*  ──────►  Custom Python Functions               │    │
+│  │   browser_*      ──────►  Playwright MCP Proxy                  │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+          │                                              │
+          │ Browserbase API                              │ MCP Proxy (stdio)
+          ▼                                              ▼
+┌─────────────────────────┐                 ┌─────────────────────────────┐
+│   Browserbase Cloud     │                 │   @playwright/mcp           │
+│                         │                 │   (npx subprocess)          │
+│  • Session management   │◄────────────────│                             │
+│  • Download storage     │    CDP/WSS      │  Connects to Browserbase    │
+│  • Proxy infrastructure │                 │  via cdp_url                │
+└─────────────────────────┘                 └─────────────────────────────┘
+```
+
+### Key Design Decisions
+
+1. **FastMCP as_proxy()** - Forwards all Playwright MCP tools without reimplementing them
+2. **Runtime env var reading** - Allows tests to mock credentials via monkeypatch
+3. **CDP for downloads** - Uses Chrome DevTools Protocol to configure browser download behavior
+4. **Polling for downloads** - Browserbase uploads files asynchronously; we poll until ready
+5. **Base64 encoding** - Files returned as base64 for safe transport over MCP/JSON
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `BROWSERBASE_API_KEY` | Yes | Your Browserbase API key |
+| `BROWSERBASE_PROJECT_ID` | Yes | Your Browserbase project ID |
+
+Get these from [browserbase.com/settings](https://browserbase.com/settings).
+
+---
+
+## Development
+
+### Running the Server Locally
 
 ```bash
-# Watch stories complete
-cat prd.json | jq '.userStories[] | {id, title, passes}'
+# Start the server (stdio mode)
+uv run fastmcp run src/clerkiq_playwright_mcp/server.py
 
-# See learnings from iterations
-cat progress.txt
-
-# Check commits
-git log --oneline -10
+# Or with environment variables
+export $(grep -v '^#' .env | xargs) && uv run python -m clerkiq_playwright_mcp.server
 ```
+
+### Adding New Tools
+
+1. Add function to `src/clerkiq_playwright_mcp/tools/browserbase.py`
+2. Register in `server.py` with `mcp.tool(your_function)`
+3. Add tests in `tests/test_browserbase_tools.py`
+4. Run tests: `uv run pytest tests/ -v`
 
 ---
 
-## Why This Over the Built-in Skill?
+## License
 
-Geoffrey Huntley [explicitly stated](https://www.youtube.com/watch?v=O2bBWDoxO4s) that **"Claude Code's implementation isn't it."**
-
-```mermaid
-flowchart TB
-    subgraph builtin["Built-in Ralph Skill"]
-        B1[Single Session] --> B2[Stop Hook Blocks Exit]
-        B2 --> B3[Same Context Grows]
-        B3 --> B4[Context Eventually Fills]
-        B4 --> B5[Quality Degrades]
-    end
-
-    subgraph thisrepo["This Repo: PRD-Driven Ralph"]
-        R1[Bash Loop Spawns Instance] --> R2[Fresh Context Every Time]
-        R2 --> R3[Implement ONE Story]
-        R3 --> R4[Commit + Update prd.json]
-        R4 --> R5[Instance Exits Cleanly]
-        R5 --> R1
-    end
-
-    style builtin fill:#ffcccc,stroke:#cc0000
-    style thisrepo fill:#ccffcc,stroke:#00cc00
-```
-
-### The Critical Difference: Fresh Context
-
-| Aspect | Built-in Skill | This Repo |
-|--------|---------------|-----------|
-| **Context per iteration** | Accumulates (same session) | Fresh (new instance) |
-| **Memory model** | In-context (degrades over time) | External files (git, prd.json, progress.txt) |
-| **Stop condition** | Hook blocks exit | `<promise>COMPLETE</promise>` signal |
-| **Task structure** | Unstructured prompt | PRD with acceptance criteria |
-| **Customization** | Limited | Full control via prompt files |
-| **Progress visibility** | Opaque | `progress.txt` + `prd.json` status |
-| **Learning persistence** | Lost when session ends | Saved to CLAUDE.md/AGENTS.md files |
-
----
-
-## How It Works
-
-```mermaid
-flowchart TB
-    subgraph setup["Setup Phase"]
-        S1["You write a PRD<br/><small>Define what you want to build</small>"]
-        S2["Convert to prd.json<br/><small>Break into small user stories</small>"]
-        S3["Run ralph.sh<br/><small>Starts the autonomous loop</small>"]
-    end
-
-    subgraph loop["Loop Phase (Fresh Context Each Time)"]
-        L1["Agent picks a story<br/><small>Finds next passes: false</small>"]
-        L2["Implements it<br/><small>Writes code, runs tests</small>"]
-        L3["Commits changes<br/><small>If tests pass</small>"]
-        L4["Updates prd.json<br/><small>Sets passes: true</small>"]
-        L5["Logs to progress.txt<br/><small>Saves learnings</small>"]
-    end
-
-    subgraph decision["Decision"]
-        D1{"More stories?"}
-    end
-
-    subgraph done["Complete"]
-        E1["Done!<br/><small>All stories complete</small>"]
-    end
-
-    S1 --> S2
-    S2 --> S3
-    S3 --> L1
-    L1 --> L2
-    L2 --> L3
-    L3 --> L4
-    L4 --> L5
-    L5 --> D1
-    D1 -->|Yes| L1
-    D1 -->|No| E1
-
-    style setup fill:#f0f7ff,stroke:#4a90d9
-    style loop fill:#f5f5f5,stroke:#666666
-    style decision fill:#fff8e6,stroke:#c9a227
-    style done fill:#f0fff4,stroke:#38a169
-```
-
-### The Memory Model
-
-```mermaid
-graph LR
-    subgraph persist["Persists Between Iterations"]
-        A[Git History] --> |"What was done"| D[Fresh Agent Instance]
-        B[prd.json] --> |"What's left to do"| D
-        C[progress.txt] --> |"Learnings & patterns"| D
-        E[CLAUDE.md / AGENTS.md] --> |"Codebase knowledge"| D
-    end
-
-    D --> |"Updates"| A
-    D --> |"Updates"| B
-    D --> |"Appends"| C
-    D --> |"May update"| E
-```
-
----
-
-## The PRD Skills (Claude Code Only)
-
-Two optional skills help you create and convert PRDs. These are Claude Code specific.
-
-### Install the Skills
-
-```bash
-# Global installation (available in all projects)
-mkdir -p ~/.claude/skills
-cp -r /path/to/ralph/.claude/skills/prd ~/.claude/skills/
-cp -r /path/to/ralph/.claude/skills/ralph ~/.claude/skills/
-
-# Or project-local installation
-mkdir -p .claude/skills
-cp -r /path/to/ralph/.claude/skills/* .claude/skills/
-```
-
-### Workflow
-
-```mermaid
-flowchart LR
-    A[Feature Idea] --> B["/prd skill"]
-    B --> C["tasks/prd-feature.md"]
-    C --> D["/ralph skill"]
-    D --> E["prd.json"]
-    E --> F["ralph.sh"]
-    F --> G{All stories pass?}
-    G -->|No| F
-    G -->|Yes| H[Feature Complete]
-```
-
-### `/prd` — Generate a PRD
-
-```
-/prd Add a task priority system with high/medium/low levels
-```
-
-Asks 3-5 clarifying questions, then generates a structured PRD in `tasks/prd-[feature-name].md`.
-
-### `/ralph` — Convert PRD to JSON
-
-```
-/ralph convert tasks/prd-task-priority.md
-```
-
-Converts your PRD markdown to the `prd.json` format that Ralph executes.
-
----
-
-## Writing Good User Stories
-
-### Story Size: The #1 Rule
-
-**Each story must be completable in ONE Ralph iteration (one context window).**
-
-```
-✅ Right-sized:                    ❌ Too big (split these):
-─────────────────────────────────────────────────────────────
-• Add a database column            • "Build entire dashboard"
-• Add a UI component               • "Add authentication"
-• Add a filter dropdown            • "Refactor the API"
-• Update a server action
-```
-
-**Rule of thumb:** If you can't describe the change in 2-3 sentences, it's too big.
-
-### Story Ordering: Dependencies First
-
-| Priority | Type | Example |
-|----------|------|---------|
-| 1 | Schema/migrations | Add `priority` column to tasks table |
-| 2 | Backend logic | Create server action for priority updates |
-| 3 | UI components | Add priority badge to task cards |
-| 4 | Aggregations | Add priority filter dropdown |
-
-### Acceptance Criteria: Must Be Verifiable
-
-```
-✅ Good (verifiable):              ❌ Bad (vague):
-─────────────────────────────────────────────────────────────
-• Add status column with           • "Works correctly"
-  default 'pending'
-• Filter has options: All,         • "User can do X easily"
-  Active, Completed
-• Clicking delete shows            • "Good UX"
-  confirmation dialog
-• Typecheck passes                 • "Handles edge cases"
-```
-
-**Always include:**
-- `"Typecheck passes"` — on every story
-- `"Verify in browser"` — on UI stories
-
----
-
-## Customization
-
-### Edit Prompt Files
-
-Every instruction Ralph follows is in `prompt-claude.md` (or `prompt-codex.md`). Add your project's requirements:
-
-```markdown
-## Quality Requirements
-
-- ALL commits must pass `npm run typecheck`
-- Run `npm test` before committing
-- Use Tailwind for all styling
-- Never modify files in `src/legacy/`
-- Always use server actions, not API routes
-```
-
-### What You Control
-
-| What | How |
-|------|-----|
-| **Quality gates** | Edit prompt files to require specific checks |
-| **Story granularity** | Define exact acceptance criteria in `prd.json` |
-| **Learning persistence** | `progress.txt` captures patterns across iterations |
-| **Browser verification** | Add "Verify in browser" to UI story criteria |
-
----
-
-## Debugging
-
-```bash
-# See which stories are done
-cat prd.json | jq '.userStories[] | {id, title, passes}'
-
-# See learnings from previous iterations
-cat progress.txt
-
-# Check git history
-git log --oneline -10
-
-# See current branch
-git branch --show-current
-```
-
----
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `ralph.sh` | Wrapper script — choose Claude Code or OpenAI Codex |
-| `ralph-claude.sh` | Claude Code agent loop |
-| `ralph-codex.sh` | OpenAI Codex agent loop |
-| `prompt-claude.md` | Instructions for Claude iterations |
-| `prompt-codex.md` | Instructions for Codex iterations |
-| `prd.json` | User stories with acceptance criteria and `passes` status |
-| `progress.txt` | Learnings that persist across iterations |
-| `CLAUDE.md` | Project instructions for Claude Code |
-| `AGENTS.md` | Project instructions for OpenAI Codex |
-| `.claude/skills/` | Claude Code skills for PRD generation |
+MIT
 
 ---
 
 ## Credits
 
-- **[Geoffrey Huntley](https://ghuntley.com/ralph/)** — Created the Ralph pattern
-- **[Ryan Carson](https://x.com/ryancarson)** — Original Amp implementation this repo is based on
-- **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** — The AI that does the work
-- **[OpenAI Codex](https://github.com/openai/codex)** — Alternative AI engine
-
----
-
-## TL;DR
-
-| If you want... | Use... |
-|----------------|--------|
-| Quick and dirty loop | Built-in skill |
-| **Full control, fresh context, PRD-driven** | **This repo** |
-
----
-
-*"That's the beauty of Ralph — the technique is deterministically bad in an undeterministic world."* — Geoffrey Huntley
-
-*"Every failure leaves a breadcrumb. Every small commit adds a brick. Eventually, the breadcrumbs become a highway and the bricks become a cathedral. Ralph just keeps laying bricks."* — Jay Ozer
+- **[Browserbase](https://browserbase.com)** - Cloud browser infrastructure
+- **[Playwright MCP](https://github.com/anthropics/mcp-server-playwright)** - Browser automation tools
+- **[FastMCP](https://gofastmcp.com)** - MCP server framework
