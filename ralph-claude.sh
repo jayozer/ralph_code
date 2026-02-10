@@ -181,7 +181,7 @@ for ((i = 1; i <= MAX_ITERATIONS; i++)); do
       duration_ms: .duration_ms,
       duration_api_ms: .duration_api_ms,
       num_turns: .num_turns,
-      model: (.modelUsage | keys[0] // .model // $configured_model // "unknown"),
+      model: (.modelUsage | to_entries | max_by(.value.costUSD // 0) | .key // $configured_model // "unknown"),
       input_tokens: .usage.input_tokens,
       output_tokens: .usage.output_tokens,
       cache_read_tokens: .usage.cache_read_input_tokens,
