@@ -29,12 +29,13 @@ show_stats() {
   INPUT_TOKENS=$(echo "$LATEST" | jq '[.[].input_tokens // 0] | add')
   OUTPUT_TOKENS=$(echo "$LATEST" | jq '[.[].output_tokens // 0] | add')
   CACHE_READ=$(echo "$LATEST" | jq '[.[].cache_read_tokens // 0] | add')
+  CACHED_INPUT=$(echo "$LATEST" | jq '[.[].cached_input_tokens // 0] | add')
+  REASONING_OUTPUT=$(echo "$LATEST" | jq '[.[].reasoning_output_tokens // 0] | add')
   COST=$(echo "$LATEST" | jq '[.[].cost_usd // 0] | add')
   MODEL=$(echo "$LATEST" | jq -r '.[0].model // "unknown"')
 
   # Get first timestamp and calculate elapsed time
   FIRST_TS=$(echo "$LATEST" | jq -r '.[0].timestamp')
-  LAST_TS=$(echo "$LATEST" | jq -r '.[-1].timestamp')
 
   # Calculate elapsed since run started (wall clock time from first iteration)
   if [ -n "$FIRST_TS" ] && [ "$FIRST_TS" != "null" ]; then
@@ -62,8 +63,12 @@ show_stats() {
   # Format cost
   COST_FMT=$(printf "%.2f" "$COST")
 
-  # Calculate total tokens
-  TOTAL_TOKENS=$((INPUT_TOKENS + OUTPUT_TOKENS + CACHE_READ))
+  # Calculate total tokens. Codex input_tokens already include cached_input_tokens.
+  if [ "$ENGINE" = "claude" ]; then
+    TOTAL_TOKENS=$((INPUT_TOKENS + OUTPUT_TOKENS + CACHE_READ))
+  else
+    TOTAL_TOKENS=$((INPUT_TOKENS + OUTPUT_TOKENS))
+  fi
 
   # Clear screen for watch mode
   [ "$1" = "clear" ] && clear
@@ -84,13 +89,15 @@ show_stats() {
   if [ "$CACHE_READ" -gt 0 ]; then
     echo " Cache Read:    $CACHE_READ"
   fi
+  if [ "$CACHED_INPUT" -gt 0 ]; then
+    echo " Cached Input:  $CACHED_INPUT"
+  fi
+  if [ "$REASONING_OUTPUT" -gt 0 ]; then
+    echo " Reasoning Out: $REASONING_OUTPUT"
+  fi
   echo " Total Tokens:  $TOTAL_TOKENS"
   echo "───────────────────────────────────────────────────────────"
-  if [ "$ENGINE" = "claude" ]; then
-    echo " Total Cost:    \$$COST_FMT"
-  else
-    echo " Total Cost:    N/A (Codex)"
-  fi
+  echo " Total Cost:    \$$COST_FMT"
   echo "═══════════════════════════════════════════════════════════"
   echo " Last updated:  $(date '+%H:%M:%S')"
 }

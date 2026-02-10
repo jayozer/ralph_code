@@ -13,6 +13,37 @@ ARCHIVE_DIR="$SCRIPT_DIR/archive"
 LAST_BRANCH_FILE="$SCRIPT_DIR/.last-branch"
 STATS_FILE="$SCRIPT_DIR/ralph-stats.jsonl"
 RUN_ID=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+ENV_FILE="$SCRIPT_DIR/.env"
+
+# Load local .env if present.
+if [ -f "$ENV_FILE" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$ENV_FILE"
+  set +a
+fi
+
+CLAUDE_MODEL="${RALPH_CLAUDE_MODEL:-claude-haiku-4-5}"
+case "$CLAUDE_MODEL" in
+  claude-opus-4-6|claude-sonnet-4-5|claude-haiku-4-5)
+    ;;
+  *)
+    echo "Invalid RALPH_CLAUDE_MODEL: $CLAUDE_MODEL"
+    echo "Allowed models: claude-opus-4-6, claude-sonnet-4-5, claude-haiku-4-5"
+    exit 1
+    ;;
+esac
+
+CLAUDE_REASONING_EFFORT="${RALPH_CLAUDE_REASONING_EFFORT:-medium}"
+case "$CLAUDE_REASONING_EFFORT" in
+  low|medium|high)
+    ;;
+  *)
+    echo "Invalid RALPH_CLAUDE_REASONING_EFFORT: $CLAUDE_REASONING_EFFORT"
+    echo "Allowed effort values: low, medium, high"
+    exit 1
+    ;;
+esac
 
 # Archive previous run if branch changed
 if [ -f "$PRD_FILE" ] && [ -f "$LAST_BRANCH_FILE" ]; then
@@ -119,9 +150,9 @@ print_summary() {
   echo "═══════════════════════════════════════════════════════════"
 }
 
-echo "Starting Ralph - Max iterations: $MAX_ITERATIONS"
+echo "Starting Ralph - Max iterations: $MAX_ITERATIONS (model: $CLAUDE_MODEL, effort: $CLAUDE_REASONING_EFFORT)"
 
-for i in $(seq 1 $MAX_ITERATIONS); do
+for ((i = 1; i <= MAX_ITERATIONS; i++)); do
   echo ""
   echo "═══════════════════════════════════════════════════════"
   echo "  Ralph Iteration $i of $MAX_ITERATIONS"
@@ -131,28 +162,32 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   # Using -p (print mode) for non-interactive execution
   # Using --dangerously-skip-permissions to allow autonomous operation
   # Using --output-format json to capture stats
-  OUTPUT=$(claude -p "$(cat "$SCRIPT_DIR/prompt-claude.md")" --dangerously-skip-permissions --output-format json 2>&1) || true
+  OUTPUT=$(claude -p "$(cat "$SCRIPT_DIR/prompt-claude.md")" --dangerously-skip-permissions --output-format json --model "$CLAUDE_MODEL" --effort "$CLAUDE_REASONING_EFFORT" 2>&1) || true
 
   # Extract result text for display and completion check
   RESULT=$(echo "$OUTPUT" | jq -r '.result // empty' 2>/dev/null || echo "$OUTPUT")
   echo "$RESULT"
 
   # Extract and append stats to JSONL file
-  STATS=$(echo "$OUTPUT" | jq -c '{
-    run_id: "'"$RUN_ID"'",
-    engine: "claude",
-    iteration: '"$i"',
-    timestamp: (now | todate),
-    duration_ms: .duration_ms,
-    duration_api_ms: .duration_api_ms,
-    num_turns: .num_turns,
-    model: (.modelUsage | keys[0] // "unknown"),
-    input_tokens: .usage.input_tokens,
-    output_tokens: .usage.output_tokens,
-    cache_read_tokens: .usage.cache_read_input_tokens,
-    cache_creation_tokens: .usage.cache_creation_input_tokens,
-    cost_usd: .total_cost_usd
-  }' 2>/dev/null)
+  STATS=$(echo "$OUTPUT" | jq -c \
+    --arg run_id "$RUN_ID" \
+    --arg configured_model "$CLAUDE_MODEL" \
+    --argjson iteration "$i" \
+    '{
+      run_id: $run_id,
+      engine: "claude",
+      iteration: $iteration,
+      timestamp: (now | todate),
+      duration_ms: .duration_ms,
+      duration_api_ms: .duration_api_ms,
+      num_turns: .num_turns,
+      model: (.modelUsage | to_entries | max_by(.value.costUSD // 0) | .key // $configured_model // "unknown"),
+      input_tokens: .usage.input_tokens,
+      output_tokens: .usage.output_tokens,
+      cache_read_tokens: .usage.cache_read_input_tokens,
+      cache_creation_tokens: .usage.cache_creation_input_tokens,
+      cost_usd: .total_cost_usd
+    }' 2>/dev/null)
 
   if [ -n "$STATS" ] && [ "$STATS" != "null" ]; then
     echo "$STATS" >> "$STATS_FILE"

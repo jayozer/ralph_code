@@ -32,7 +32,7 @@ git clone https://github.com/jayozer/ralph.git
 cd ralph
 
 # 2. Copy files to your project
-cp ralph.sh ralph-claude.sh prompt-claude.md prd.json.example /path/to/your-project/
+cp ralph.sh ralph-claude.sh prompt-claude.md prd.json.example .env.example /path/to/your-project/
 
 # 3. In your project, create prd.json from the example
 cd /path/to/your-project
@@ -65,13 +65,13 @@ git clone https://github.com/jayozer/ralph.git
 cd ralph
 
 # For Claude Code:
-cp ralph.sh ralph-claude.sh prompt-claude.md prd.json.example /path/to/your-project/
+cp ralph.sh ralph-claude.sh prompt-claude.md prd.json.example .env.example /path/to/your-project/
 
 # For OpenAI Codex:
-cp ralph.sh ralph-codex.sh prompt-codex.md prd.json.example /path/to/your-project/
+cp ralph.sh ralph-codex.sh prompt-codex.md prd.json.example .env.example /path/to/your-project/
 
 # For both engines:
-cp ralph.sh ralph-claude.sh ralph-codex.sh prompt-claude.md prompt-codex.md prd.json.example /path/to/your-project/
+cp ralph.sh ralph-claude.sh ralph-codex.sh prompt-claude.md prompt-codex.md prd.json.example .env.example /path/to/your-project/
 ```
 
 **Option B: Download directly**
@@ -389,6 +389,26 @@ Every instruction Ralph follows is in `prompt-claude.md` (or `prompt-codex.md`).
 - Always use server actions, not API routes
 ```
 
+### Configure Model, Reasoning, and Cost
+
+Ralph runners read a local `.env` file from the same directory as the scripts.
+
+```bash
+cp .env.example .env
+```
+
+Supported variables:
+
+- `RALPH_CLAUDE_MODEL` - `claude-opus-4-6`, `claude-sonnet-4-5`, `claude-haiku-4-5`
+- `RALPH_CLAUDE_REASONING_EFFORT` - `low`, `medium`, `high`
+- `RALPH_CODEX_MODEL` - `gpt-5-2-codex`
+- `RALPH_CODEX_REASONING_EFFORT` - Codex reasoning effort (default `medium`)
+- `RALPH_CODEX_INPUT_COST_PER_MILLION`
+- `RALPH_CODEX_CACHED_INPUT_COST_PER_MILLION`
+- `RALPH_CODEX_OUTPUT_COST_PER_MILLION`
+
+`ralph-stats.sh` now shows total cost for both Claude and Codex runs.
+
 ### What You Control
 
 | What | How |
@@ -429,6 +449,7 @@ git branch --show-current
 | `prompt-codex.md` | Instructions for Codex iterations |
 | `prd.json` | User stories with acceptance criteria and `passes` status |
 | `progress.txt` | Learnings that persist across iterations |
+| `.env` / `.env.example` | Model, reasoning, and pricing config for runners |
 | `CLAUDE.md` | Project instructions for Claude Code |
 | `AGENTS.md` | Project instructions for OpenAI Codex |
 | `.claude/skills/` | Claude Code skills for PRD generation |

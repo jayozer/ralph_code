@@ -3,6 +3,9 @@ prd.json
 progress.txt
 ralph-stats.jsonl
 .last-branch
+.env
+.env.local
+.env.*.local
 
 # Archive is optional to commit
 # archive/

@@ -55,4 +55,5 @@ npm run dev
 - Each iteration spawns a fresh Claude Code instance with clean context
 - Memory persists via git history, `progress.txt`, and `prd.json`
 - Stories should be small enough to complete in one context window
+- Runtime model selection, reasoning effort, and Codex pricing are driven by `.env` values (see `.env.example`)
 - Always update CLAUDE.md with discovered patterns for future iterations
