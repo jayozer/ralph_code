@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import type { Node, Edge, NodeChange, EdgeChange, Connection } from '@xyflow/react';
 import {
   ReactFlow,
@@ -240,7 +240,12 @@ function App() {
   const [visibleCount, setVisibleCount] = useState(1);
   const nodePositions = useRef<{ [key: string]: { x: number; y: number } }>({ ...positions });
 
-  const getNodes = (count: number) => {
+  // Update page title based on engine
+  useEffect(() => {
+    document.title = `How Ralph Works with ${engineName}`;
+  }, []);
+
+  const getNodes = useCallback((count: number) => {
     const stepNodes = allSteps.map((step, index) =>
       createNode(step, index < count, nodePositions.current[step.id])
     );
@@ -249,14 +254,14 @@ function App() {
       return createNoteNode(note, noteVisible, nodePositions.current[note.id]);
     });
     return [...stepNodes, ...noteNodes];
-  };
+  }, []);
 
-  const initialNodes = getNodes(1);
-  const initialEdges = edgeConnections.map((conn, index) =>
-    createEdge(conn, index < 0)
+  const initialEdges = useMemo(() => 
+    edgeConnections.map((conn, index) => createEdge(conn, index < 0)),
+    []
   );
 
-  const [nodes, setNodes] = useNodesState(initialNodes);
+  const [nodes, setNodes] = useNodesState(() => getNodes(1));
   const [edges, setEdges] = useEdgesState(initialEdges);
 
   const onNodesChange = useCallback(
