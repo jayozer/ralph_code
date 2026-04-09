@@ -4,7 +4,7 @@
 
 > "Ralph is a Bash loop." — [Geoffrey Huntley](https://ghuntley.com/ralph/), creator of the Ralph pattern
 
-**The original, PRD-driven Ralph implementation.** Works with Claude Code CLI and OpenAI Codex. Converted from [Ryan Carson's Amp version](https://x.com/ryancarson/status/2008548371712135632).
+**The original, PRD-driven Ralph implementation.** Works with Claude Code CLI, OpenAI Codex, and Kimi CLI. Converted from [Ryan Carson's Amp version](https://x.com/ryancarson/status/2008548371712135632).
 
 This is **not** the built-in Claude Code ralph skill. This is a customizable, transparent implementation that gives you full control over the autonomous loop — the way Geoffrey Huntley intended.
 
@@ -42,6 +42,7 @@ cp prd.json.example prd.json
 # 4. Run Ralph
 ./ralph.sh claude 10   # Claude Code with 10 iterations
 ./ralph.sh codex 10    # OpenAI Codex with 10 iterations
+./ralph.sh kimi 10     # Kimi with 10 iterations
 ```
 
 ---
@@ -54,6 +55,7 @@ cp prd.json.example prd.json
 |-------------|--------------|
 | **Claude Code CLI** | [Install guide](https://docs.anthropic.com/en/docs/claude-code) |
 | **OpenAI Codex CLI** (optional) | [Install guide](https://github.com/openai/codex) |
+| **Kimi CLI** (optional) | [Install guide](https://moonshotai.github.io/kimi-cli/) |
 | **jq** | `brew install jq` (macOS) or `apt install jq` (Linux) |
 | **Git repository** | Your project must be a git repo |
 
@@ -70,8 +72,11 @@ cp ralph.sh ralph-claude.sh prompt-claude.md prd.json.example .env.example /path
 # For OpenAI Codex:
 cp ralph.sh ralph-codex.sh prompt-codex.md prd.json.example .env.example /path/to/your-project/
 
-# For both engines:
-cp ralph.sh ralph-claude.sh ralph-codex.sh prompt-claude.md prompt-codex.md prd.json.example .env.example /path/to/your-project/
+# For Kimi CLI:
+cp ralph.sh ralph-kimi.sh prompt-kimi.md prd.json.example .env.example /path/to/your-project/
+
+# For all engines:
+cp ralph.sh ralph-claude.sh ralph-codex.sh ralph-kimi.sh prompt-claude.md prompt-codex.md prompt-kimi.md prd.json.example .env.example /path/to/your-project/
 ```
 
 **Option B: Download directly**
@@ -87,6 +92,10 @@ curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prd.json.example
 # Additional files for Codex (optional)
 curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph-codex.sh
 curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prompt-codex.md
+
+# Additional files for Kimi (optional)
+curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/ralph-kimi.sh
+curl -sLO https://raw.githubusercontent.com/jayozer/ralph/main/prompt-kimi.md
 
 chmod +x ralph*.sh
 ```
@@ -152,6 +161,9 @@ cp prd.json.example prd.json
 
 # OpenAI Codex
 ./ralph.sh codex 10        # 10 iterations with Codex
+
+# Kimi CLI
+./ralph.sh kimi 10         # 10 iterations with Kimi
 ```
 
 **What happens:**
@@ -406,8 +418,14 @@ Supported variables:
 - `RALPH_CODEX_INPUT_COST_PER_MILLION`
 - `RALPH_CODEX_CACHED_INPUT_COST_PER_MILLION`
 - `RALPH_CODEX_OUTPUT_COST_PER_MILLION`
+- `RALPH_KIMI_MODEL` - Kimi model name passed to the CLI (default `kimi-k2.5`)
+- `RALPH_KIMI_THINKING` - `true` or `false`
+- `RALPH_KIMI_AGENT` - builtin Kimi agent name (default `default`)
+- `RALPH_KIMI_MAX_STEPS_PER_TURN` - max Kimi steps per iteration (default `50`)
 
-`ralph-stats.sh` now shows total cost for both Claude and Codex runs.
+`ralph-stats.sh` now shows total cost for Claude and Codex runs. Kimi support logs runtime metadata, but token and cost totals default to zero unless richer CLI stats are added later.
+
+Kimi CLI must already be installed and configured. If Kimi is not logged in or no default LLM is set, the runner will fail with the CLI error output.
 
 ### What You Control
 
@@ -445,8 +463,10 @@ git branch --show-current
 | `ralph.sh` | Wrapper script — choose Claude Code or OpenAI Codex |
 | `ralph-claude.sh` | Claude Code agent loop |
 | `ralph-codex.sh` | OpenAI Codex agent loop |
+| `ralph-kimi.sh` | Kimi CLI agent loop |
 | `prompt-claude.md` | Instructions for Claude iterations |
 | `prompt-codex.md` | Instructions for Codex iterations |
+| `prompt-kimi.md` | Instructions for Kimi iterations |
 | `prd.json` | User stories with acceptance criteria and `passes` status |
 | `progress.txt` | Learnings that persist across iterations |
 | `.env` / `.env.example` | Model, reasoning, and pricing config for runners |
@@ -462,6 +482,7 @@ git branch --show-current
 - **[Ryan Carson](https://x.com/ryancarson)** — Original Amp implementation this repo is based on
 - **[Claude Code](https://docs.anthropic.com/en/docs/claude-code)** — The AI that does the work
 - **[OpenAI Codex](https://github.com/openai/codex)** — Alternative AI engine
+- **[Kimi CLI](https://moonshotai.github.io/kimi-cli/)** — Alternative CLI coding engine
 
 ---
 
