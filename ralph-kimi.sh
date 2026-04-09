@@ -25,7 +25,6 @@ fi
 
 KIMI_MODEL="${RALPH_KIMI_MODEL:-kimi-code/kimi-for-coding}"
 KIMI_THINKING="${RALPH_KIMI_THINKING:-true}"
-KIMI_AGENT="${RALPH_KIMI_AGENT:-default}"
 KIMI_MAX_STEPS_PER_TURN="${RALPH_KIMI_MAX_STEPS_PER_TURN:-50}"
 
 case "$KIMI_THINKING" in
@@ -38,10 +37,6 @@ case "$KIMI_THINKING" in
     ;;
 esac
 
-if [ -z "$KIMI_AGENT" ]; then
-  echo "Invalid RALPH_KIMI_AGENT: value cannot be empty"
-  exit 1
-fi
 
 if ! [[ "$KIMI_MAX_STEPS_PER_TURN" =~ ^[0-9]+$ ]] || [ "$KIMI_MAX_STEPS_PER_TURN" -lt 1 ]; then
   echo "Invalid RALPH_KIMI_MAX_STEPS_PER_TURN: $KIMI_MAX_STEPS_PER_TURN"
@@ -167,7 +162,7 @@ if ! command -v kimi >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Starting Ralph - Max iterations: $MAX_ITERATIONS (model: $KIMI_MODEL, thinking: $KIMI_THINKING, agent: $KIMI_AGENT)"
+echo "Starting Ralph - Max iterations: $MAX_ITERATIONS (model: $KIMI_MODEL, thinking: $KIMI_THINKING)"
 
 for ((i = 1; i <= MAX_ITERATIONS; i++)); do
   echo ""
@@ -182,7 +177,6 @@ for ((i = 1; i <= MAX_ITERATIONS; i++)); do
     --output-format text
     --final-message-only
     --model "$KIMI_MODEL"
-    --agent "$KIMI_AGENT"
     --max-steps-per-turn "$KIMI_MAX_STEPS_PER_TURN"
     --prompt "$(cat "$SCRIPT_DIR/prompt-kimi.md")"
   )
