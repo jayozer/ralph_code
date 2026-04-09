@@ -10,8 +10,9 @@ ralph-stats.jsonl
 # Archive is optional to commit
 # archive/
 
-# Flowchart (React dev app - not needed for Ralph to work)
-flowchart/
+# Flowchart node_modules (React dev app - dependencies not needed)
+flowchart/node_modules/
+flowchart/dist/
 
 # OS files
 .DS_Store

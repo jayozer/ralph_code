@@ -193,7 +193,7 @@ for ((i = 1; i <= MAX_ITERATIONS; i++)); do
     KIMI_ARGS+=(--no-thinking)
   fi
 
-  OUTPUT=$(kimi "${KIMI_ARGS[@]}" 2>&1) || true
+  OUTPUT=$(kimi "${KIMI_ARGS[@]}" < /dev/null 2>&1) || true
   END_TIME=$(now_ms)
   DURATION_MS=$((END_TIME - START_TIME))
 
