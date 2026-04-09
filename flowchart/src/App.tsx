@@ -238,6 +238,7 @@ function createNoteNode(note: typeof notes[0], visible: boolean, position?: { x:
 
 function App() {
   const [visibleCount, setVisibleCount] = useState(1);
+
   const nodePositions = useRef<{ [key: string]: { x: number; y: number } }>({ ...positions });
 
   // Update page title based on engine
@@ -261,7 +262,8 @@ function App() {
     []
   );
 
-  const [nodes, setNodes] = useNodesState(() => getNodes(1));
+  const initialNodes = useMemo(() => getNodes(1), []);
+  const [nodes, setNodes] = useNodesState(initialNodes);
   const [edges, setEdges] = useEdgesState(initialEdges);
 
   const onNodesChange = useCallback(
