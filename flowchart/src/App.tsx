@@ -18,6 +18,17 @@ import {
 import '@xyflow/react/dist/style.css';
 import './App.css';
 
+// Engine configuration from env
+const engine = import.meta.env.VITE_RALPH_ENGINE || 'claude';
+
+const engineNames: Record<string, string> = {
+  claude: 'Claude Code',
+  codex: 'OpenAI Codex',
+  kimi: 'Kimi CLI',
+};
+
+const engineName = engineNames[engine] || 'Claude Code';
+
 const nodeWidth = 240;
 const nodeHeight = 70;
 
@@ -40,7 +51,7 @@ const allSteps: { id: string; label: string; description: string; phase: Phase }
   { id: '2', label: 'Convert to prd.json', description: 'Break into small user stories', phase: 'setup' },
   { id: '3', label: 'Run ralph.sh', description: 'Starts the autonomous loop', phase: 'setup' },
   // Loop phase
-  { id: '4', label: 'Claude picks a story', description: 'Finds next passes: false', phase: 'loop' },
+  { id: '4', label: `${engineName.split(' ')[0]} picks a story`, description: 'Finds next passes: false', phase: 'loop' },
   { id: '5', label: 'Implements it', description: 'Writes code, runs tests', phase: 'loop' },
   { id: '6', label: 'Commits changes', description: 'If tests pass', phase: 'loop' },
   { id: '7', label: 'Updates prd.json', description: 'Sets passes: true', phase: 'loop' },
@@ -325,7 +336,7 @@ function App() {
   return (
     <div className="app-container">
       <div className="header">
-        <h1>How Ralph Works with Claude Code</h1>
+        <h1>How Ralph Works with {engineName}</h1>
         <p>Autonomous AI agent loop for completing PRDs</p>
       </div>
       <div className="flow-container">
