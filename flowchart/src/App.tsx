@@ -27,7 +27,14 @@ const engineNames: Record<string, string> = {
   kimi: 'Kimi CLI',
 };
 
-const engineName = engineNames[engine] || 'Claude Code';
+const engineSubjects: Record<string, string> = {
+  claude: 'Claude',
+  codex: 'Codex',
+  kimi: 'Kimi',
+};
+
+const engineName = engineNames[engine] ?? 'Claude Code';
+const engineSubject = engineSubjects[engine] ?? 'Claude';
 
 const nodeWidth = 240;
 const nodeHeight = 70;
@@ -51,7 +58,7 @@ const allSteps: { id: string; label: string; description: string; phase: Phase }
   { id: '2', label: 'Convert to prd.json', description: 'Break into small user stories', phase: 'setup' },
   { id: '3', label: 'Run ralph.sh', description: 'Starts the autonomous loop', phase: 'setup' },
   // Loop phase
-  { id: '4', label: `${engineName.split(' ')[0]} picks a story`, description: 'Finds next passes: false', phase: 'loop' },
+  { id: '4', label: `${engineSubject} picks a story`, description: 'Finds next passes: false', phase: 'loop' },
   { id: '5', label: 'Implements it', description: 'Writes code, runs tests', phase: 'loop' },
   { id: '6', label: 'Commits changes', description: 'If tests pass', phase: 'loop' },
   { id: '7', label: 'Updates prd.json', description: 'Sets passes: true', phase: 'loop' },
@@ -246,24 +253,20 @@ function App() {
     document.title = `How Ralph Works with ${engineName}`;
   }, []);
 
-  const getNodes = useCallback((count: number) => {
+  const getNodes = useCallback((count: number, nodePos: { [key: string]: { x: number; y: number } }) => {
     const stepNodes = allSteps.map((step, index) =>
-      createNode(step, index < count, nodePositions.current[step.id])
+      createNode(step, index < count, nodePos[step.id])
     );
     const noteNodes = notes.map(note => {
       const noteVisible = count >= note.appearsWithStep;
-      return createNoteNode(note, noteVisible, nodePositions.current[note.id]);
+      return createNoteNode(note, noteVisible, nodePos[note.id]);
     });
     return [...stepNodes, ...noteNodes];
   }, []);
 
-  const initialEdges = useMemo(() => 
-    edgeConnections.map((conn, index) => createEdge(conn, index < 0)),
-    []
-  );
+  const initialEdges = edgeConnections.map((conn, index) => createEdge(conn, index < 0));
 
-  const initialNodes = useMemo(() => getNodes(1), []);
-  const [nodes, setNodes] = useNodesState(initialNodes);
+  const [nodes, setNodes] = useNodesState(getNodes(1, positions));
   const [edges, setEdges] = useEdgesState(initialEdges);
 
   const onNodesChange = useCallback(
@@ -310,35 +313,35 @@ function App() {
       const newCount = visibleCount + 1;
       setVisibleCount(newCount);
 
-      setNodes(getNodes(newCount));
+      setNodes(getNodes(newCount, nodePositions.current));
       setEdges(
         edgeConnections.map((conn) =>
           createEdge(conn, getEdgeVisibility(conn, newCount))
         )
       );
     }
-  }, [visibleCount, setNodes, setEdges]);
+  }, [visibleCount, setNodes, setEdges, getNodes]);
 
   const handlePrev = useCallback(() => {
     if (visibleCount > 1) {
       const newCount = visibleCount - 1;
       setVisibleCount(newCount);
 
-      setNodes(getNodes(newCount));
+      setNodes(getNodes(newCount, nodePositions.current));
       setEdges(
         edgeConnections.map((conn) =>
           createEdge(conn, getEdgeVisibility(conn, newCount))
         )
       );
     }
-  }, [visibleCount, setNodes, setEdges]);
+  }, [visibleCount, setNodes, setEdges, getNodes]);
 
   const handleReset = useCallback(() => {
     setVisibleCount(1);
     nodePositions.current = { ...positions };
-    setNodes(getNodes(1));
+    setNodes(getNodes(1, nodePositions.current));
     setEdges(edgeConnections.map((conn, index) => createEdge(conn, index < 0)));
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, getNodes]);
 
   return (
     <div className="app-container">
