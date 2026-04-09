@@ -1,14 +1,16 @@
 #!/bin/bash
 # Ralph - Multi-engine AI agent loop
-# Usage: ./ralph.sh [claude|codex] [max_iterations]
+# Usage: ./ralph.sh [claude|codex|kimi] [max_iterations]
 #
 # Supported engines:
 #   claude - Claude Code CLI (default)
 #   codex  - OpenAI Codex CLI
+#   kimi   - Kimi CLI
 #
 # Example:
 #   ./ralph.sh claude 10
 #   ./ralph.sh codex 5
+#   ./ralph.sh kimi 5
 
 ENGINE="${1:-claude}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,6 +30,9 @@ case "$ENGINE" in
   codex)
     exec "$SCRIPT_DIR/ralph-codex.sh" "$@"
     ;;
+  kimi)
+    exec "$SCRIPT_DIR/ralph-kimi.sh" "$@"
+    ;;
   -h|--help|help)
     echo "Ralph - Multi-engine AI agent loop"
     echo ""
@@ -36,17 +41,19 @@ case "$ENGINE" in
     echo "Engines:"
     echo "  claude  - Claude Code CLI (default)"
     echo "  codex   - OpenAI Codex CLI"
+    echo "  kimi    - Kimi CLI"
     echo ""
     echo "Examples:"
     echo "  ./ralph.sh              # Claude with default 10 iterations"
     echo "  ./ralph.sh 5            # Claude with 5 iterations"
     echo "  ./ralph.sh claude 10    # Claude with 10 iterations"
     echo "  ./ralph.sh codex 10     # Codex with 10 iterations"
+    echo "  ./ralph.sh kimi 10      # Kimi with 10 iterations"
     exit 0
     ;;
   *)
     echo "Unknown engine: $ENGINE"
-    echo "Usage: ./ralph.sh [claude|codex] [max_iterations]"
+    echo "Usage: ./ralph.sh [claude|codex|kimi] [max_iterations]"
     echo "Run './ralph.sh --help' for more info"
     exit 1
     ;;
