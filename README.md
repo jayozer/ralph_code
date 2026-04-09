@@ -418,7 +418,7 @@ Supported variables:
 - `RALPH_CODEX_INPUT_COST_PER_MILLION`
 - `RALPH_CODEX_CACHED_INPUT_COST_PER_MILLION`
 - `RALPH_CODEX_OUTPUT_COST_PER_MILLION`
-- `RALPH_KIMI_MODEL` - Kimi model name passed to the CLI (default `kimi-k2.5`)
+- `RALPH_KIMI_MODEL` - Kimi model name passed to the CLI (default `kimi-code/kimi-for-coding`)
 - `RALPH_KIMI_THINKING` - `true` or `false`
 - `RALPH_KIMI_AGENT` - builtin Kimi agent name (default `default`)
 - `RALPH_KIMI_MAX_STEPS_PER_TURN` - max Kimi steps per iteration (default `50`)

@@ -23,7 +23,7 @@ if [ -f "$ENV_FILE" ]; then
   set +a
 fi
 
-KIMI_MODEL="${RALPH_KIMI_MODEL:-kimi-k2.5}"
+KIMI_MODEL="${RALPH_KIMI_MODEL:-kimi-code/kimi-for-coding}"
 KIMI_THINKING="${RALPH_KIMI_THINKING:-true}"
 KIMI_AGENT="${RALPH_KIMI_AGENT:-default}"
 KIMI_MAX_STEPS_PER_TURN="${RALPH_KIMI_MAX_STEPS_PER_TURN:-50}"
